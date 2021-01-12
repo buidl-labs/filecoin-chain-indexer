@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/lotus/api/client"
+	lru "github.com/hashicorp/golang-lru"
+
 	// "github.com/filecoin-project/lotus/node/repo"
 	// lru "github.com/hashicorp/golang-lru"
 	// "github.com/mitchellh/go-homedir"
@@ -19,16 +21,16 @@ import (
 )
 
 type APIOpener struct {
-	// cache   *lru.ARCCache // cache shared across all instances of the api
+	cache   *lru.ARCCache // cache shared across all instances of the api
 	addr    string
 	headers http.Header
 }
 
 func NewAPIOpener(cctx context.Context, cacheSize int) (*APIOpener, lens.APICloser, error) {
-	// ac, err := lru.NewARC(cacheSize)
-	// if err != nil {
-	// 	return nil, nil, xerrors.Errorf("new arc cache: %w", err)
-	// }
+	ac, err := lru.NewARC(cacheSize)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("new arc cache: %w", err)
+	}
 
 	var rawaddr, rawtoken string
 
@@ -81,7 +83,7 @@ func NewAPIOpener(cctx context.Context, cacheSize int) (*APIOpener, lens.APIClos
 	}
 
 	o := &APIOpener{
-		// cache:   ac,
+		cache:   ac,
 		addr:    apiURI(addr),
 		headers: apiHeaders(rawtoken),
 	}
@@ -95,12 +97,12 @@ func (o *APIOpener) Open(ctx context.Context) (lens.API, lens.APICloser, error) 
 		return nil, nil, xerrors.Errorf("new full node rpc: %w", err)
 	}
 
-	// cacheStore, err := NewCacheCtxStore(ctx, api, o.cache)
-	// if err != nil {
-	// 	return nil, nil, xerrors.Errorf("new cache store: %w", err)
-	// }
+	cacheStore, err := NewCacheCtxStore(ctx, api, o.cache)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("new cache store: %w", err)
+	}
 
-	lensAPI := NewAPIWrapper(api, nil)
+	lensAPI := NewAPIWrapper(api, cacheStore)
 
 	return lensAPI, lens.APICloser(closer), nil
 }

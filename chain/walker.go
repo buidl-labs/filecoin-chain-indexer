@@ -14,7 +14,7 @@ import (
 )
 
 // func NewWalker(api *apistruct.FullNodeStruct, obs TipSetObserver, minHeight, maxHeight int64) *Walker {
-func NewWalker(opener lens.APIOpener, obs TipSetObserver, minHeight, maxHeight int64) *Walker {
+func NewWalker(opener lens.APIOpener, obs TipSetObserver, tasks []string, taskType int, minHeight, maxHeight int64) *Walker {
 	return &Walker{
 		// lens:      baselens.Lens{},
 		// api:       api,
@@ -23,6 +23,8 @@ func NewWalker(opener lens.APIOpener, obs TipSetObserver, minHeight, maxHeight i
 		finality:  900,
 		minHeight: minHeight,
 		maxHeight: maxHeight,
+		tasks:     tasks,
+		taskType:  taskType,
 	}
 }
 
@@ -34,6 +36,8 @@ type Walker struct {
 	finality  int   // epochs after which chain state is considered final
 	minHeight int64 // limit persisting to tipsets equal to or above this height
 	maxHeight int64 // limit persisting to tipsets equal to or below this height}
+	tasks     []string
+	taskType  int
 }
 
 func (c *Walker) Run(ctx context.Context) error {
@@ -49,23 +53,32 @@ func (c *Walker) Run(ctx context.Context) error {
 	}
 	fmt.Println("after chainHead func call")
 
-	if int64(ts.Height()) < c.minHeight {
-		fmt.Println("int64(ts.Height()) < c.minHeight")
-		return xerrors.Errorf("cannot walk history, chain head (%d) is earlier than minimum height (%d)", int64(ts.Height()), c.minHeight)
-	}
-
-	if int64(ts.Height()) > c.maxHeight {
-		fmt.Println("int64(ts.Height()) > c.maxHeight")
-
-		ts, err = node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(c.maxHeight), types.EmptyTSK)
-		if err != nil {
-			return xerrors.Errorf("get tipset by height: %w", err)
+	if c.taskType == 1 {
+		log.Println("taskType 1 (currentEpochTasks): found tipset", "height", ts.Height())
+		if err := c.obs.TipSet(ctx, ts); err != nil {
+			return xerrors.Errorf("notify tipset: %w", err)
 		}
-		fmt.Println("now ts", ts)
-	}
+	} else {
+		log.Println("taskType 0 (allEpochsTasks): found tipset", "height", ts.Height())
 
-	if err := c.WalkChain(ctx, node, ts); err != nil {
-		return xerrors.Errorf("walk chain: %w", err)
+		if int64(ts.Height()) < c.minHeight {
+			fmt.Println("int64(ts.Height()) < c.minHeight")
+			return xerrors.Errorf("cannot walk history, chain head (%d) is earlier than minimum height (%d)", int64(ts.Height()), c.minHeight)
+		}
+
+		if int64(ts.Height()) > c.maxHeight {
+			fmt.Println("int64(ts.Height()) > c.maxHeight")
+
+			ts, err = node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(c.maxHeight), types.EmptyTSK)
+			if err != nil {
+				return xerrors.Errorf("get tipset by height: %w", err)
+			}
+			fmt.Println("now ts", ts)
+		}
+
+		if err := c.WalkChain(ctx, node, ts); err != nil {
+			return xerrors.Errorf("walk chain: %w", err)
+		}
 	}
 
 	return nil

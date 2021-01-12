@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
@@ -16,26 +17,31 @@ import (
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"golang.org/x/xerrors"
-
-	// "github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"github.com/ipfs/go-cid"
 )
 
 type API interface {
 	StoreAPI
+	ClientAPI
 	ChainAPI
 	StateAPI
 
-	// ComputeGasOutputs(gasUsed, gasLimit int64, baseFee, feeCap, gasPremium abi.TokenAmount) vm.GasOutputs
-	// GetExecutedMessagesForTipset(ctx context.Context, ts, pts *types.TipSet) ([]*ExecutedMessage, error)
+	ComputeGasOutputs(gasUsed, gasLimit int64, baseFee, feeCap, gasPremium abi.TokenAmount) vm.GasOutputs
+	GetExecutedMessagesForTipset(ctx context.Context, ts, pts *types.TipSet) ([]*ExecutedMessage, error)
 }
 
 type StoreAPI interface {
 	Store() adt.Store
+}
+
+type ClientAPI interface {
+	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error)
 }
 
 type ChainAPI interface {
@@ -59,6 +65,9 @@ type StateAPI interface {
 	StateListActors(context.Context, types.TipSetKey) ([]address.Address, error)
 	StateChangedActors(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)
 
+	// StateListMessages(ctx context.Context, match *MessageMatch, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)
+	StateListMiners(context.Context, types.TipSetKey) ([]address.Address, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
 	StateMinerSectors(ctx context.Context, addr address.Address, bf *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
 	StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*api.MinerPower, error)
 
@@ -158,4 +167,21 @@ func apiHeaders(token string) http.Header {
 	headers := http.Header{}
 	headers.Add("Authorization", "Bearer "+token)
 	return headers
+}
+
+type MessageMatch struct {
+	To   address.Address
+	From address.Address
+}
+
+type ExecutedMessage struct {
+	Cid           cid.Cid
+	Height        abi.ChainEpoch
+	Message       *types.Message
+	Receipt       *types.MessageReceipt
+	BlockHeader   *types.BlockHeader
+	Blocks        []cid.Cid // blocks this message appeared in
+	Index         uint64    // Message and receipt sequence in tipset
+	FromActorCode cid.Cid   // code of the actor the message is from
+	ToActorCode   cid.Cid   // code of the actor the message is to
 }
