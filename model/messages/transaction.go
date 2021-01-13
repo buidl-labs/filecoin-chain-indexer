@@ -1,4 +1,4 @@
-package transactions
+package messages
 
 import (
 	"context"
@@ -17,15 +17,14 @@ const (
 )
 
 type Transaction struct {
-	// tableName struct{} `pg:"transaction"` //nolint: structcheck,unused
-	Height    int64  `pg:",pk,use_zero,notnull"`
-	Timestamp uint64 `pg:",notnull"`
-	Cid       string `pg:",pk,notnull"`
-	// StateRoot          string   `pg:",pk,notnull"`
-	Miner              string          `pg:",notnull`  // minerid
-	From               string          `pg:",notnull"` //miner/owner/worker/from account
-	To                 string          `pg:",notnull"` // miner/owner/worker/to account
-	Value              string          `pg:",notnull"` //amount (+/- FIL)
+	Height             int64           `pg:",pk,use_zero,notnull"`
+	Timestamp          uint64          `pg:",notnull"`
+	Cid                string          `pg:",pk,notnull"`
+	StateRoot          string          `pg:",pk,notnull"`
+	MinerID            string          `pg:",notnull"` // minerid
+	FromAddr           string          `pg:",notnull"` // miner/owner/worker/from account
+	ToAddr             string          `pg:",notnull"` // miner/owner/worker/to account
+	Amount             string          `pg:",notnull"` // amount (+/- FIL)
 	Type               TransactionType `pg:""`
 	GasFeeCap          string          `pg:",notnull"`
 	GasPremium         string          `pg:",notnull"`

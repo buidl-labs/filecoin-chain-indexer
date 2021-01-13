@@ -4,38 +4,33 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/filecoin-project/lotus/api/client"
 	lru "github.com/hashicorp/golang-lru"
-
-	// "github.com/filecoin-project/lotus/node/repo"
-	// lru "github.com/hashicorp/golang-lru"
-	// "github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"golang.org/x/xerrors"
 
+	"github.com/buidl-labs/filecoin-chain-indexer/config"
 	"github.com/buidl-labs/filecoin-chain-indexer/lens"
 )
 
 type APIOpener struct {
-	cache   *lru.ARCCache // cache shared across all instances of the api
+	cache   *lru.ARCCache
 	addr    string
 	headers http.Header
 }
 
-func NewAPIOpener(cctx context.Context, cacheSize int) (*APIOpener, lens.APICloser, error) {
-	ac, err := lru.NewARC(cacheSize)
+func NewAPIOpener(cfg config.Config, cctx context.Context) (*APIOpener, lens.APICloser, error) {
+	ac, err := lru.NewARC(cfg.CacheSize)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("new arc cache: %w", err)
 	}
 
 	var rawaddr, rawtoken string
 
-	// if cctx.IsSet("api") {
-	tokenMaddr := os.Getenv("FULLNODE_API_INFO")
+	tokenMaddr := cfg.FullNodeAPIInfo
 	fmt.Println("tokenmaddr", tokenMaddr)
 	toks := strings.Split(tokenMaddr, ":")
 	if len(toks) != 2 {
@@ -44,33 +39,6 @@ func NewAPIOpener(cctx context.Context, cacheSize int) (*APIOpener, lens.APIClos
 
 	rawtoken = toks[0]
 	rawaddr = toks[1]
-	// } else if cctx.IsSet("repo") {
-	// 	repoPath := cctx.String("repo")
-	// 	p, err := homedir.Expand(repoPath)
-	// 	if err != nil {
-	// 		return nil, nil, xerrors.Errorf("expand home dir (%s): %w", repoPath, err)
-	// 	}
-
-	// 	r, err := repo.NewFS(p)
-	// 	if err != nil {
-	// 		return nil, nil, xerrors.Errorf("open repo at path: %s; %w", p, err)
-	// 	}
-
-	// 	ma, err := r.APIEndpoint()
-	// 	if err != nil {
-	// 		return nil, nil, xerrors.Errorf("api endpoint: %w", err)
-	// 	}
-
-	// 	token, err := r.APIToken()
-	// 	if err != nil {
-	// 		return nil, nil, xerrors.Errorf("api token: %w", err)
-	// 	}
-
-	// 	rawaddr = ma.String()
-	// 	rawtoken = string(token)
-	// } else {
-	// 	return nil, nil, xerrors.Errorf("cannot connect to lotus api: missing --api or --repo flags")
-	// }
 
 	parsedAddr, err := ma.NewMultiaddr(rawaddr)
 	if err != nil {

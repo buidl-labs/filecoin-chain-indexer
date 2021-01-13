@@ -2,28 +2,18 @@ package lens
 
 import (
 	"context"
-	"fmt"
-	"net/http"
-	"os"
-	"strings"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apistruct"
-	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
-	ma "github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
-	"golang.org/x/xerrors"
 )
 
 type API interface {
@@ -61,20 +51,19 @@ type ChainAPI interface {
 }
 
 type StateAPI interface {
-	StateGetActor(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error)
-	StateListActors(context.Context, types.TipSetKey) ([]address.Address, error)
+	StateAllMinerFaults(ctx context.Context, lookback abi.ChainEpoch, ts types.TipSetKey) ([]*api.Fault, error)
 	StateChangedActors(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)
-
-	// StateListMessages(ctx context.Context, match *MessageMatch, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)
+	StateGetActor(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error)
+	StateGetReceipt(ctx context.Context, bcid cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error)
+	StateListActors(context.Context, types.TipSetKey) ([]address.Address, error)
 	StateListMiners(context.Context, types.TipSetKey) ([]address.Address, error)
+	StateMarketDeals(context.Context, types.TipSetKey) (map[string]api.MarketDeal, error)
+	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
 	StateMinerSectors(ctx context.Context, addr address.Address, bf *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
+	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
 	StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*api.MinerPower, error)
-
-	StateMarketDeals(context.Context, types.TipSetKey) (map[string]api.MarketDeal, error)
-
 	StateReadState(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*api.ActorState, error)
-	StateGetReceipt(ctx context.Context, bcid cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error)
 	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (api.CirculatingSupply, error)
 }
 
@@ -82,91 +71,6 @@ type APICloser func()
 
 type APIOpener interface {
 	Open(context.Context) (API, APICloser, error)
-}
-
-// Lens fetches data from a Filecoin node
-type Lens struct {
-	api    *apistruct.FullNodeStruct
-	closer jsonrpc.ClientCloser
-
-	Epoch       epochClient
-	Miner       minerClient
-	Transaction transactionClient
-	Account     accountClient
-}
-
-// New creates a Filecoin client
-func New(endpoint string) (*Lens, error) {
-	var api apistruct.FullNodeStruct
-
-	ctx := context.Background()
-	// addr := "ws://" + endpoint + "/rpc/v0"
-	// outs := []interface{}{&api.Internal, &api.CommonStruct.Internal}
-
-	// DATABASE_DSN="postgresql://localhost:5432/filecoin_indexer"
-	// RPC_ENDPOINT="filecoin.infura.io"
-	// 1lERSegOP3IOaT8IMjTMam0ZcRP:5196eb0a290a324575f167462ee95d95
-	// headers := http.Header{}
-	// headers.Add("Authorization", "Basic "+"MWxFUlNlZ09QM0lPYVQ4SU1qVE1hbTBaY1JQOjUxOTZlYjBhMjkwYTMyNDU3NWYxNjc0NjJlZTk1ZDk1")
-	// closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin", outs, headers)
-
-	tokenMaddr := os.Getenv("FULLNODE_API_INFO")
-	fmt.Println("tokenmaddr", tokenMaddr)
-	toks := strings.Split(tokenMaddr, ":")
-	if len(toks) != 2 {
-		return nil, fmt.Errorf("invalid api tokens, expected <token>:<maddr>, got: %s", tokenMaddr)
-	}
-	rawtoken := toks[0]
-	rawaddr := toks[1]
-
-	parsedAddr, err := ma.NewMultiaddr(rawaddr)
-	if err != nil {
-		return nil, xerrors.Errorf("parse listen address: %w", err)
-	}
-
-	_, addr, err := manet.DialArgs(parsedAddr)
-	if err != nil {
-		return nil, xerrors.Errorf("dial multiaddress: %w", err)
-	}
-
-	uri := apiURI(addr)
-	headers := apiHeaders(rawtoken)
-
-	_, closer, err := client.NewFullNodeRPC(ctx, uri, headers)
-	if err != nil {
-		return nil, xerrors.Errorf("new full node rpc: %w", err)
-	}
-
-	// closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin", outs, http.Header{})
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	return &Lens{
-		api:    &api,
-		closer: closer,
-
-		Epoch:       epochClient{api: &api},
-		Miner:       minerClient{api: &api},
-		Transaction: transactionClient{api: &api},
-		Account:     accountClient{api: &api},
-	}, nil
-}
-
-// Close closes the websocket connection
-func (l *Lens) Close() {
-	fmt.Println("calling closer")
-	l.closer()
-}
-
-func apiURI(addr string) string {
-	return "ws://" + addr + "/rpc/v0"
-}
-
-func apiHeaders(token string) http.Header {
-	headers := http.Header{}
-	headers.Add("Authorization", "Bearer "+token)
-	return headers
 }
 
 type MessageMatch struct {
@@ -184,4 +88,9 @@ type ExecutedMessage struct {
 	Index         uint64    // Message and receipt sequence in tipset
 	FromActorCode cid.Cid   // code of the actor the message is from
 	ToActorCode   cid.Cid   // code of the actor the message is to
+}
+
+type Fault struct {
+	Miner address.Address
+	Epoch abi.ChainEpoch
 }

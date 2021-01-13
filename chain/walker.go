@@ -3,21 +3,17 @@ package chain
 import (
 	"context"
 	"fmt"
-	"log"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/types"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/xerrors"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/lens"
-	"github.com/filecoin-project/go-state-types/abi"
-
-	// "github.com/filecoin-project/lotus/api/apistruct"
-	"github.com/filecoin-project/lotus/chain/types"
-	"golang.org/x/xerrors"
 )
 
-// func NewWalker(api *apistruct.FullNodeStruct, obs TipSetObserver, minHeight, maxHeight int64) *Walker {
 func NewWalker(opener lens.APIOpener, obs TipSetObserver, tasks []string, taskType int, minHeight, maxHeight int64) *Walker {
 	return &Walker{
-		// lens:      baselens.Lens{},
-		// api:       api,
 		opener:    opener,
 		obs:       obs,
 		finality:  900,
@@ -29,9 +25,7 @@ func NewWalker(opener lens.APIOpener, obs TipSetObserver, tasks []string, taskTy
 }
 
 type Walker struct {
-	// lens      baselens.Lens
-	opener lens.APIOpener
-	// api       *apistruct.FullNodeStruct
+	opener    lens.APIOpener
 	obs       TipSetObserver
 	finality  int   // epochs after which chain state is considered final
 	minHeight int64 // limit persisting to tipsets equal to or above this height
@@ -85,7 +79,6 @@ func (c *Walker) Run(ctx context.Context) error {
 }
 
 func (c *Walker) WalkChain(ctx context.Context, node lens.API, ts *types.TipSet) error {
-
 	fmt.Println("in walkchain")
 	log.Println("found tipset", "height", ts.Height())
 	if err := c.obs.TipSet(ctx, ts); err != nil {

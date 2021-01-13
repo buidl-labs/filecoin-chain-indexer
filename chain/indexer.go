@@ -2,16 +2,18 @@ package chain
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"log"
+	"reflect"
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/types"
+	log "github.com/sirupsen/logrus"
+
+	"github.com/buidl-labs/filecoin-chain-indexer/db"
 	"github.com/buidl-labs/filecoin-chain-indexer/lens"
 	"github.com/buidl-labs/filecoin-chain-indexer/model"
-
-	// "github.com/filecoin-project/lotus/api/apistruct"
-	"github.com/filecoin-project/lotus/chain/types"
 )
 
 const (
@@ -25,40 +27,44 @@ var _ TipSetObserver = (*TipSetIndexer)(nil)
 
 // TipSetIndexer waits for tipsets and persists their block data into a database.
 type TipSetIndexer struct {
-	window          time.Duration
+	db              *sql.DB
+	store           db.Store
 	storage         model.Storage
-	processors      map[string]TipSetProcessor
-	actorProcessors map[string]ActorProcessor
+	window          time.Duration
 	name            string
 	persistSlot     chan struct{}
+	processors      map[string]TipSetProcessor
+	actorProcessors map[string]ActorProcessor
 	lastTipSet      *types.TipSet
 	node            lens.API
 	opener          lens.APIOpener
 	closer          lens.APICloser
-	// api *apistruct.FullNodeStruct
 }
 
-func NewTipSetIndexer(o lens.APIOpener, d model.Storage, window time.Duration, name string, tasks []string) (*TipSetIndexer, error) {
+func NewTipSetIndexer(o lens.APIOpener, db *sql.DB, store db.Store, s model.Storage, window time.Duration, name string, tasks []string) (*TipSetIndexer, error) {
 	tsi := &TipSetIndexer{
-		storage:         d,
+		db:              db,
+		store:           store,
+		storage:         s,
 		window:          window,
 		name:            name,
 		persistSlot:     make(chan struct{}, 1), // allow one concurrent persistence job
 		processors:      map[string]TipSetProcessor{},
 		actorProcessors: map[string]ActorProcessor{},
 		opener:          o,
-		// api: api,
 	}
 
 	for _, task := range tasks {
 		fmt.Println(task)
 		switch task {
+		case BlocksTask:
+			tsi.processors[BlocksTask] = NewBlockProcessor(store)
 		case MinersTask:
-			tsi.processors[MinersTask] = NewMinerProcessor(o)
+			tsi.processors[MinersTask] = NewMinerProcessor(o, store)
 		case MessagesTask:
-			tsi.processors[MessagesTask] = NewMessageProcessor(o)
+			tsi.processors[MessagesTask] = NewMessageProcessor(o, store)
 		case MarketsTask:
-			tsi.processors[MarketsTask] = NewMarketProcessor(o)
+			tsi.processors[MarketsTask] = NewMarketProcessor(o, store)
 		}
 	}
 	return tsi, nil
@@ -97,8 +103,7 @@ func (t *TipSetIndexer) TipSet(ctx context.Context, ts *types.TipSet) error {
 	for inFlight > 0 {
 		res := <-results
 		inFlight--
-
-		// llt := ll.With("task", res.Task)
+		fmt.Println("inflight > 0", res)
 
 		// Was there a fatal error?
 		if res.Error != nil {
@@ -110,34 +115,15 @@ func (t *TipSetIndexer) TipSet(ctx context.Context, ts *types.TipSet) error {
 			return res.Error
 		}
 
-		// if res.Report == nil {
-		// 	// Nothing was done for this tipset
-		// 	log.Print("task returned with no report")
-		// 	continue
-		// }
-
-		// Fill in some report metadata
-		// res.Report.Reporter = t.name
-		// res.Report.Task = res.Task
-		// res.Report.StartedAt = start
-		// res.Report.CompletedAt = time.Now()
-
-		// if res.Report.ErrorsDetected != nil {
-		// 	res.Report.Status = visormodel.ProcessingStatusError
-		// } else if res.Report.StatusInformation != "" {
-		// 	res.Report.Status = visormodel.ProcessingStatusInfo
-		// } else {
-		// 	res.Report.Status = visormodel.ProcessingStatusOK
-		// }
-
-		// llt.Infow("task report", "status", res.Report.Status, "time", res.Report.CompletedAt.Sub(res.Report.StartedAt))
-
+		fmt.Println("torestak", res.Data)
 		// Persist the processing report and the data in a single transaction
 		taskOutputs[res.Task] = model.PersistableList{res.Data}
 	}
 
 	// remember the last tipset we observed
 	t.lastTipSet = ts
+
+	fmt.Println("TOUTPUTS", taskOutputs)
 
 	if len(taskOutputs) == 0 {
 		// Nothing to persist
@@ -173,7 +159,7 @@ func (t *TipSetIndexer) TipSet(ctx context.Context, ts *types.TipSet) error {
 					log.Println("persistence failed", "task", task, "error", err)
 					return
 				}
-				log.Println("task data persisted", "task", task, "time", time.Since(start))
+				log.Println("task data persisted", "task", task, "time", time.Since(start), "typeofp", reflect.TypeOf(p), p)
 			}(task, p)
 		}
 		wg.Wait()
@@ -184,12 +170,8 @@ func (t *TipSetIndexer) TipSet(ctx context.Context, ts *types.TipSet) error {
 }
 
 func (t *TipSetIndexer) runProcessor(ctx context.Context, p TipSetProcessor, name string, ts *types.TipSet, results chan *TaskResult) {
-	// ctx, _ = tag.New(ctx, tag.Upsert(metrics.TaskType, name))
-	// stats.Record(ctx, metrics.TipsetHeight.M(int64(ts.Height())))
-	// stop := metrics.Timer(ctx, metrics.ProcessingDuration)
-	// defer stop()
-
 	data, err := p.ProcessTipSet(ctx, ts)
+	fmt.Println("PTSd", data)
 	if err != nil {
 		results <- &TaskResult{
 			Task:  name,

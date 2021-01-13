@@ -2,7 +2,8 @@ package storage
 
 import (
 	"context"
-	"log"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/model"
 )

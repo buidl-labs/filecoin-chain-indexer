@@ -2,22 +2,28 @@ package chain
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/lotus/chain/types"
 
+	"github.com/buidl-labs/filecoin-chain-indexer/db"
 	"github.com/buidl-labs/filecoin-chain-indexer/model"
-	"github.com/buidl-labs/filecoin-chain-indexer/model/blocks"
+	blocksmodel "github.com/buidl-labs/filecoin-chain-indexer/model/blocks"
 )
 
 type BlockProcessor struct {
+	store db.Store
 }
 
-func NewBlockProcessor() *BlockProcessor {
-	return &BlockProcessor{}
+func NewBlockProcessor(store db.Store) *BlockProcessor {
+	return &BlockProcessor{
+		store: store,
+	}
 }
 
 func (p *BlockProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (model.Persistable, error) {
 	var pl model.PersistableList
+	var blockHeadersResults blocksmodel.BlockHeaders
 	for _, bh := range ts.Blocks() {
 		select {
 		case <-ctx.Done():
@@ -25,15 +31,17 @@ func (p *BlockProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 		default:
 		}
 
-		pl = append(pl, blocks.NewBlockHeader(bh))
-		// pl = append(pl, blocks.NewBlockParents(bh))
-		// pl = append(pl, blocks.NewDrandBlockEntries(bh))
+		pl = append(pl, blocksmodel.NewBlockHeader(bh))
+		blockHeadersResults = append(blockHeadersResults, blocksmodel.NewBlockHeader(bh))
+		// pl = append(pl, blocksmodel.NewBlockParents(bh))
+		// pl = append(pl, blocksmodel.NewDrandBlockEntries(bh))
 	}
 
-	// report := &visormodel.ProcessingReport{
-	// 	Height:    int64(ts.Height()),
-	// 	StateRoot: ts.ParentState().String(),
-	// }
+	fmt.Println("blockHeadersResults", blockHeadersResults)
+	for _, bhr := range blockHeadersResults {
+		p.store.PersistBlockHeaders(*bhr)
+		fmt.Println("bhr: miner", bhr.Miner, "wincount", bhr.WinCount)
+	}
 
 	return pl, nil
 }

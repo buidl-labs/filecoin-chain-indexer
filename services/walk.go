@@ -2,9 +2,12 @@ package services
 
 import (
 	"context"
-	"log"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/chain"
+	"github.com/buidl-labs/filecoin-chain-indexer/config"
+	"github.com/buidl-labs/filecoin-chain-indexer/db"
 	"github.com/buidl-labs/filecoin-chain-indexer/lens/lotus"
 	"github.com/buidl-labs/filecoin-chain-indexer/model"
 	"github.com/buidl-labs/filecoin-chain-indexer/storage"
@@ -13,8 +16,8 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func Walk(tasks []string, taskType int) error {
-	lensOpener, lensCloser, err := lotus.NewAPIOpener(context.Background(), 1)
+func Walk(cfg config.Config, tasks []string, taskType int) error {
+	lensOpener, lensCloser, err := lotus.NewAPIOpener(cfg, context.Background())
 	if err != nil {
 		return xerrors.Errorf("setup lens: %w", err)
 	}
@@ -23,9 +26,15 @@ func Walk(tasks []string, taskType int) error {
 	}()
 
 	var strg model.Storage = &storage.NullStorage{}
+
+	store, err := db.New(cfg.DBConnStr)
+	if err != nil {
+		return xerrors.Errorf("setup indexer, connecting db: %w", err)
+	}
+	db0, _ := store.Conn()
 	// tasks := []string{"miners", "markets", "messages"}
 	// tasks := []string{"markets"}
-	tsIndexer, err := chain.NewTipSetIndexer(lensOpener, strg, 0, "somename", tasks)
+	tsIndexer, err := chain.NewTipSetIndexer(lensOpener, db0, *store, strg, 0, "somename", tasks)
 	if err != nil {
 		return xerrors.Errorf("setup indexer: %w", err)
 	}
@@ -48,11 +57,12 @@ func Walk(tasks []string, taskType int) error {
 	}
 
 	maxHeight := int64(ts.Height())
+	maxHeight = int64(100)
 
 	// TODO: implement dataservice
 	// height := dataservice.GetParsedTill()
 	// minHeight := int64(192698) // setting a dummy value here
-	minHeight := maxHeight - 10
+	minHeight := maxHeight - 99
 
 	// walker := chain.NewWalker(&apistruct.FullNodeStruct{}, tsIndexer, 10, 1000)
 	walker := chain.NewWalker(lensOpener, tsIndexer, tasks, taskType, minHeight, maxHeight)

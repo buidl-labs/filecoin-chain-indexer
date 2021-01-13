@@ -18,3 +18,4 @@
 .DS_Store
 main
 filecoin-chain-indexer
+.vscode/

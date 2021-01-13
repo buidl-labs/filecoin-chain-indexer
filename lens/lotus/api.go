@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/buidl-labs/filecoin-chain-indexer/lens"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -16,6 +15,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
+
+	"github.com/buidl-labs/filecoin-chain-indexer/lens"
 )
 
 func NewAPIWrapper(node api.FullNode, store adt.Store) *APIWrapper {
@@ -94,6 +95,14 @@ func (aw *APIWrapper) StateMinerPower(ctx context.Context, addr address.Address,
 
 func (aw *APIWrapper) StateMinerSectors(ctx context.Context, addr address.Address, filter *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
 	return aw.FullNode.StateMinerSectors(ctx, addr, filter, tsk)
+}
+
+func (aw *APIWrapper) StateAllMinerFaults(ctx context.Context, lookback abi.ChainEpoch, tsk types.TipSetKey) ([]*api.Fault, error) {
+	return aw.FullNode.StateAllMinerFaults(ctx, lookback, tsk)
+}
+
+func (aw *APIWrapper) StateMinerAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
+	return aw.FullNode.StateMinerAvailableBalance(ctx, addr, tsk)
 }
 
 func (aw *APIWrapper) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
@@ -197,3 +206,8 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 
 	return emsgs, nil
 }
+
+// type Fault struct {
+// 	Miner address.Address
+// 	Epoch abi.ChainEpoch
+// }

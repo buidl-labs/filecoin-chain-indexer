@@ -3,18 +3,18 @@ package chain
 import (
 	"context"
 	"fmt"
-	"log"
 
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/types"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	"github.com/ipfs/go-cid"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/xerrors"
+
+	"github.com/buidl-labs/filecoin-chain-indexer/db"
 	"github.com/buidl-labs/filecoin-chain-indexer/lens"
 	"github.com/buidl-labs/filecoin-chain-indexer/model"
 	messagemodel "github.com/buidl-labs/filecoin-chain-indexer/model/messages"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/types"
-
-	// "github.com/filecoin-project/specs-actors/actors/builtin"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 )
 
 type MessageProcessor struct {
@@ -22,11 +22,13 @@ type MessageProcessor struct {
 	opener     lens.APIOpener
 	closer     lens.APICloser
 	lastTipSet *types.TipSet
+	store      db.Store
 }
 
-func NewMessageProcessor(opener lens.APIOpener) *MessageProcessor {
+func NewMessageProcessor(opener lens.APIOpener, store db.Store) *MessageProcessor {
 	return &MessageProcessor{
 		opener: opener,
+		store:  store,
 	}
 }
 
@@ -42,6 +44,7 @@ func (p *MessageProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) 
 
 	var data model.Persistable
 	var err error
+	var txns messagemodel.Transactions
 
 	fmt.Println("inside messageprocessor.ProcessTipSet")
 
@@ -49,15 +52,17 @@ func (p *MessageProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) 
 		if p.lastTipSet.Height() > ts.Height() {
 			fmt.Println("p.lastTipSet.Height() > ts.Height()")
 			// last tipset seen was the child
-			data, err = p.processExecutedMessages(ctx, p.lastTipSet, ts)
+			data, txns, err = p.processExecutedMessages(ctx, p.lastTipSet, ts)
 		} else if p.lastTipSet.Height() < ts.Height() {
 			fmt.Println("p.lastTipSet.Height() < ts.Height()")
 			// last tipset seen was the parent
-			data, err = p.processExecutedMessages(ctx, ts, p.lastTipSet)
+			data, txns, err = p.processExecutedMessages(ctx, ts, p.lastTipSet)
 		} else {
 			log.Println("out of order tipsets", "height", ts.Height(), "last_height", p.lastTipSet.Height())
 		}
 	}
+
+	fmt.Println("Ptipset", data)
 
 	p.lastTipSet = ts
 
@@ -68,17 +73,21 @@ func (p *MessageProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) 
 		}
 	}
 
+	for _, txn := range txns {
+		fmt.Println("gortxn", txn, txn.Cid)
+		p.store.PersistTransactions(*txn)
+	}
+
 	return data, err
 }
 
-func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts *types.TipSet) (model.Persistable, error) {
+func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts *types.TipSet) (model.Persistable, messagemodel.Transactions, error) {
 	fmt.Println("in processExecutedMessages")
 
 	emsgs, err := p.node.GetExecutedMessagesForTipset(ctx, ts, pts)
 	if err != nil {
-		// report.ErrorsDetected = xerrors.Errorf("failed to get executed messages: %w", err)
 		fmt.Println("Failed to get executed messages!")
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	var (
@@ -86,8 +95,8 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 		receiptResults      = make(messagemodel.Receipts, 0, len(emsgs))
 		blockMessageResults = make(messagemodel.BlockMessages, 0, len(emsgs))
 		// parsedMessageResults = make(messagemodel.ParsedMessages, 0, len(emsgs))
-		gasOutputsResults = make(messagemodel.GasOutputsList, 0, len(emsgs))
-		errorsDetected    = make([]*MessageError, 0, len(emsgs))
+		transactionsResults = make(messagemodel.Transactions, 0, len(emsgs))
+		errorsDetected      = make([]*MessageError, 0, len(emsgs))
 	)
 
 	var (
@@ -101,7 +110,7 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 		// Stop processing if we have been told to cancel
 		select {
 		case <-ctx.Done():
-			return nil, xerrors.Errorf("context done: %w", ctx.Err())
+			return nil, nil, xerrors.Errorf("context done: %w", ctx.Err())
 		default:
 		}
 
@@ -146,7 +155,6 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 			Method:     uint64(m.Message.Method),
 			MethodName: methodNames[m.Message.Method],
 		}
-		fmt.Println("mmethod", msg.Method)
 		messageResults = append(messageResults, msg)
 
 		rcpt := &messagemodel.Receipt{
@@ -160,12 +168,12 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 		receiptResults = append(receiptResults, rcpt)
 
 		outputs := p.node.ComputeGasOutputs(m.Receipt.GasUsed, m.Message.GasLimit, m.BlockHeader.ParentBaseFee, m.Message.GasFeeCap, m.Message.GasPremium)
-		gasOutput := &messagemodel.GasOutputs{
+		transaction := &messagemodel.Transaction{
 			Height:             msg.Height,
 			Cid:                msg.Cid,
-			From:               msg.From,
-			To:                 msg.To,
-			Value:              msg.Value,
+			FromAddr:           msg.From,
+			ToAddr:             msg.To,
+			Amount:             msg.Value,
 			GasFeeCap:          msg.GasFeeCap,
 			GasPremium:         msg.GasPremium,
 			GasLimit:           msg.GasLimit,
@@ -186,8 +194,8 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 			GasBurned:          outputs.GasBurned,
 			ActorName:          builtin2.ActorNameByCode(m.ToActorCode),
 		}
-		fmt.Println("GasO/P", gasOutput)
-		gasOutputsResults = append(gasOutputsResults, gasOutput)
+		fmt.Println("GasO/P", transaction)
+		transactionsResults = append(transactionsResults, transaction)
 
 		// method, params, err := p.parseMessageParams(m.Message, m.ToActorCode)
 		// if err == nil {
@@ -237,10 +245,9 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 		receiptResults,
 		blockMessageResults,
 		// parsedMessageResults,
-		gasOutputsResults,
+		transactionsResults,
 		// messageGasEconomyResult,
-	}, nil
-	// return nil, nil
+	}, transactionsResults, nil
 }
 
 func (p *MessageProcessor) Close() error {

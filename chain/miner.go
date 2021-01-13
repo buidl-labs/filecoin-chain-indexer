@@ -3,11 +3,15 @@ package chain
 import (
 	"context"
 	"fmt"
+	"math/big"
 
-	"github.com/buidl-labs/filecoin-chain-indexer/lens"
-	"github.com/buidl-labs/filecoin-chain-indexer/model"
 	"github.com/filecoin-project/lotus/chain/types"
 	"golang.org/x/xerrors"
+
+	"github.com/buidl-labs/filecoin-chain-indexer/db"
+	"github.com/buidl-labs/filecoin-chain-indexer/lens"
+	"github.com/buidl-labs/filecoin-chain-indexer/model"
+	minermodel "github.com/buidl-labs/filecoin-chain-indexer/model/miner"
 )
 
 type MinerProcessor struct {
@@ -15,14 +19,13 @@ type MinerProcessor struct {
 	opener     lens.APIOpener
 	closer     lens.APICloser
 	lastTipSet *types.TipSet
-	// extracterMap ActorExtractorMap
+	store      db.Store
 }
 
-// func NewMinerProcessor(opener lens.APIOpener, extracterMap ActorExtractorMap) *MinerProcessor {
-func NewMinerProcessor(opener lens.APIOpener) *MinerProcessor {
+func NewMinerProcessor(opener lens.APIOpener, store db.Store) *MinerProcessor {
 	p := &MinerProcessor{
 		opener: opener,
-		// extracterMap: extracterMap,
+		store:  store,
 	}
 	return p
 }
@@ -63,6 +66,7 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 			return data, err
 		}
 		fmt.Println("SLMpower", "raw:", mpower.MinerPower.RawBytePower, "totalraw:", mpower.TotalPower.RawBytePower, "qadj:", mpower.MinerPower.QualityAdjPower, "totalqadj:", mpower.TotalPower.QualityAdjPower)
+
 		// ask, err := p.node.ClientQueryAsk(context.Background(), *info.PeerId, addr)
 		// if err != nil {
 		// 	fmt.Println("SLMCLientqueryask", err)
@@ -70,6 +74,29 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 		// }
 		// fmt.Println("SLMAsk: {minerid:", ask.Miner, "price:", ask.Price, "verifiedP:", ask.VerifiedPrice, "minPS:", ask.MinPieceSize, "maxPS:", ask.MaxPieceSize, "timestamp:", ask.Timestamp, "Expiry:", ask.Expiry, "}")
 		fmt.Println("**********")
+
+		p.store.PersistMinerInfos(minermodel.MinerInfo{
+			MinerID:         addr.String(),
+			Address:         "",
+			PeerID:          info.PeerId.String(),
+			OwnerID:         info.Owner.String(),
+			WorkerID:        info.Worker.String(),
+			Height:          int64(ts.Height()),
+			StorageAskPrice: "",
+			MinPieceSize:    uint64(0),
+			MaxPieceSize:    uint64(0),
+		})
+
+		p.store.PersistMinerQuality(minermodel.MinerQuality{
+			MinerID:          addr.String(),
+			QualityAdjPower:  mpower.MinerPower.QualityAdjPower,
+			RawBytePower:     mpower.MinerPower.RawBytePower,
+			WinCount:         uint64(0),
+			DataStored:       "0.0",
+			BlocksMined:      big.NewInt(0),
+			MiningEfficiency: "0.0",
+			FaultySectors:    uint64(0),
+		})
 	}
 
 	return data, nil
