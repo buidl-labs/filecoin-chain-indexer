@@ -2,49 +2,37 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
-	// "github.com/jasonlvhit/gocron"
-
-	// baselens "github.com/buidl-labs/filecoin-chain-indexer/lens"
 	"github.com/buidl-labs/filecoin-chain-indexer/config"
 	"github.com/buidl-labs/filecoin-chain-indexer/services"
 )
 
 func walk(cfg config.Config) {
-	allEpochsTasks := []string{"messages", "blocks"}
+	allEpochsTasks := []string{"messages"}//, "blocks"}
 	err := services.Walk(cfg, allEpochsTasks, 0) // taskType=0
 	if err != nil {
-		fmt.Println("services.walk err", err)
-		log.Fatal(err)
+		log.Error("services.walk: allEpochsTasks", err)
 	}
-	currentEpochTasks := []string{"miners", "markets"}
-	err = services.Walk(cfg, currentEpochTasks, 1) // taskType=1
-	if err != nil {
-		fmt.Println("services.walk err", err)
-		log.Fatal(err)
-	}
+	// currentEpochTasks := []string{"miners"}//, "markets"}
+	// err := services.Walk(cfg, currentEpochTasks, 1) // taskType=1
+	// if err != nil {
+	// 	log.Error("services.walk: currentEpochTasks", err)
+	// }
 
-	fmt.Println("\n\n\nDONE ONE ROUND\n\n\n")
+	log.Info("\n\n\nDONE ONE ROUND\n\n\n")
 }
 
 func main() {
 	cfg := config.Config{
-		DBConnStr:       "postgres://rajdeep@localhost/filecoinminermarketplace?sslmode=disable",
+		DBConnStr:       os.Getenv("DB"),
 		FullNodeAPIInfo: os.Getenv("FULLNODE_API_INFO"),
-		CacheSize:       1,
+		CacheSize:       1, // TODO: Not using chain cache ATM
 	}
-	fmt.Println("Hello, world")
-	// lens, err := baselens.New("rpcendpoint")
-	// if err != nil {
-	// 	fmt.Println("lens.New err", err)
-	// 	log.Fatal(err)
-	// }
-	// defer lens.Close()
+	log.Info("Starting filecoin-chain-indexer")
 
 	var command string
 
@@ -56,18 +44,20 @@ func main() {
 
 	switch command {
 	case "migrate", "rollback":
-		services.RunMigrations(cfg, command)
+		err := services.RunMigrations(cfg, command)
+		if err != nil {
+			log.Fatal("Running migrations", err)
+		}
 	case "index":
-		// minuteTicker := time.NewTicker(60 * time.Minute)
-		minuteTicker := time.NewTicker(20 * time.Second)
+		walk(cfg)
+		// minuteTicker := time.NewTicker(60 * time.Second)
+		minuteTicker := time.NewTicker(2 * time.Minute)
 		for {
 			select {
 			case <-minuteTicker.C:
 				walk(cfg)
 			}
 		}
-		// walk()
-		// gocron.Every(1).Minute().Do(walk)
 	default:
 		log.Fatal("Please use a valid command")
 	}

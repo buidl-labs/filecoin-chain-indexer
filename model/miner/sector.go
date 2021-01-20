@@ -3,6 +3,8 @@ package miner
 import (
 	"context"
 
+	// filbig "github.com/filecoin-project/go-state-types/big"
+
 	"github.com/buidl-labs/filecoin-chain-indexer/model"
 )
 

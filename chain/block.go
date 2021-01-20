@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/lotus/chain/types"
 
@@ -23,7 +22,7 @@ func NewBlockProcessor(store db.Store) *BlockProcessor {
 
 func (p *BlockProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (model.Persistable, error) {
 	var pl model.PersistableList
-	var blockHeadersResults blocksmodel.BlockHeaders
+	var blockHeadersResults []blocksmodel.BlockHeader
 	for _, bh := range ts.Blocks() {
 		select {
 		case <-ctx.Done():
@@ -31,17 +30,13 @@ func (p *BlockProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 		default:
 		}
 
-		pl = append(pl, blocksmodel.NewBlockHeader(bh))
+		// pl = append(pl, blocksmodel.NewBlockHeader(bh))
 		blockHeadersResults = append(blockHeadersResults, blocksmodel.NewBlockHeader(bh))
 		// pl = append(pl, blocksmodel.NewBlockParents(bh))
 		// pl = append(pl, blocksmodel.NewDrandBlockEntries(bh))
 	}
 
-	fmt.Println("blockHeadersResults", blockHeadersResults)
-	for _, bhr := range blockHeadersResults {
-		p.store.PersistBlockHeaders(*bhr)
-		fmt.Println("bhr: miner", bhr.Miner, "wincount", bhr.WinCount)
-	}
+	p.store.PersistBlockHeaders(blockHeadersResults)
 
 	return pl, nil
 }

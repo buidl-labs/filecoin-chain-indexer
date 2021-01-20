@@ -1,18 +1,15 @@
 package miner
 
-import (
-	"math/big"
-
-	filbig "github.com/filecoin-project/go-state-types/big"
-)
+// filbig "github.com/filecoin-project/go-state-types/big"
 
 type MinerQuality struct {
 	MinerID          string
-	QualityAdjPower  filbig.Int
-	RawBytePower     filbig.Int
+	Height           int64
+	QualityAdjPower  string
+	RawBytePower     string
 	WinCount         uint64
 	DataStored       string
-	BlocksMined      *big.Int
+	BlocksMined      uint64
 	MiningEfficiency string
 	FaultySectors    uint64
 }

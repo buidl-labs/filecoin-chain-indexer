@@ -11,7 +11,7 @@ import (
 type BlockHeader struct {
 	Height          int64  `pg:",pk,use_zero,notnull"`
 	Cid             string `pg:",pk,notnull"`
-	Miner           string `pg:",notnull"`
+	MinerID         string `pg:",notnull"`
 	ParentWeight    string `pg:",notnull"`
 	ParentBaseFee   string `pg:",notnull"`
 	ParentStateRoot string `pg:",notnull"`
@@ -21,10 +21,10 @@ type BlockHeader struct {
 	ForkSignaling uint64 `pg:",use_zero"`
 }
 
-func NewBlockHeader(bh *types.BlockHeader) *BlockHeader {
-	return &BlockHeader{
+func NewBlockHeader(bh *types.BlockHeader) BlockHeader {
+	return BlockHeader{
 		Cid:             bh.Cid().String(),
-		Miner:           bh.Miner.String(),
+		MinerID:         bh.Miner.String(),
 		ParentWeight:    bh.ParentWeight.String(),
 		ParentBaseFee:   bh.ParentBaseFee.String(),
 		ParentStateRoot: bh.ParentStateRoot.String(),

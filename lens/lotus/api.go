@@ -2,7 +2,9 @@ package lotus
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -39,6 +41,10 @@ func (aw *APIWrapper) Store() adt.Store {
 
 func (aw *APIWrapper) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.BlockHeader, error) {
 	return aw.FullNode.ChainGetBlock(ctx, msg)
+}
+
+func (aw *APIWrapper) ChainGetMessage(ctx context.Context, bcid cid.Cid) (*types.Message, error) {
+	return aw.FullNode.ChainGetMessage(ctx, bcid)
 }
 
 func (aw *APIWrapper) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api.BlockMessages, error) {
@@ -97,13 +103,29 @@ func (aw *APIWrapper) StateMinerSectors(ctx context.Context, addr address.Addres
 	return aw.FullNode.StateMinerSectors(ctx, addr, filter, tsk)
 }
 
+func (aw *APIWrapper) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	return aw.FullNode.StateLookupID(ctx, addr, tsk)
+}
+
+func (aw *APIWrapper) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	return aw.FullNode.StateAccountKey(ctx, addr, tsk)
+}
+
 func (aw *APIWrapper) StateAllMinerFaults(ctx context.Context, lookback abi.ChainEpoch, tsk types.TipSetKey) ([]*api.Fault, error) {
 	return aw.FullNode.StateAllMinerFaults(ctx, lookback, tsk)
+}
+
+func (aw *APIWrapper) StateMinerFaults(ctx context.Context, addr address.Address, tsk types.TipSetKey) (bitfield.BitField, error) {
+	return aw.FullNode.StateMinerFaults(ctx, addr, tsk)
 }
 
 func (aw *APIWrapper) StateMinerAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
 	return aw.FullNode.StateMinerAvailableBalance(ctx, addr, tsk)
 }
+
+// func (aw *APIWrapper) StateMinerDeadlines(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]api.Deadline, error) {
+// 	return aw.FullNode.StateMinerDeadlines(ctx, addr, tsk)
+// }
 
 func (aw *APIWrapper) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
 	return aw.FullNode.StateReadState(ctx, actor, tsk)
@@ -120,25 +142,56 @@ func (aw *APIWrapper) StateVMCirculatingSupplyInternal(ctx context.Context, tsk 
 // GetExecutedMessagesForTipset returns a list of messages sent as part of pts (parent) with receipts found in ts (child).
 // No attempt at deduplication of messages is made.
 func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts *types.TipSet) ([]*lens.ExecutedMessage, error) {
-	fmt.Println("in GetExecutedMessagesForTipset")
 	if !types.CidArrsEqual(ts.Parents().Cids(), pts.Cids()) {
 		return nil, xerrors.Errorf("child tipset (%s) is not on the same chain as parent (%s)", ts.Key(), pts.Key())
 	}
 
-	fmt.Println("aw.Store()", aw.Store(), ts.ParentState())
+	fmt.Println("gonnacall LST")
 	stateTree, err := state.LoadStateTree(aw.Store(), ts.ParentState())
 	if err != nil {
 		return nil, xerrors.Errorf("load state tree: %w", err)
 	}
+	fmt.Println("LST", stateTree)
 
-	// Build a lookup of actor codes
-	actorCodes := map[address.Address]cid.Cid{}
-	if err := stateTree.ForEach(func(a address.Address, act *types.Actor) error {
-		actorCodes[a] = act.Code
-		return nil
-	}); err != nil {
-		return nil, xerrors.Errorf("iterate actors: %w", err)
+	plan, _ := ioutil.ReadFile("actorCodes.json")
+	// var data interface{}
+	var results map[string]string // address.Address]cid.Cid
+	err = json.Unmarshal([]byte(plan), &results)
+	if err != nil {
+		return nil, xerrors.Errorf("load actorCodes: %w", err)
 	}
+	fmt.Println("HII", "f099", results["f099"])
+	actorCodes := map[address.Address]cid.Cid{}
+	for k, v := range results {
+		a, _ := address.NewFromString(k)
+		c, _ := cid.Decode(v)
+		actorCodes[a] = c
+	}
+	fmt.Println(actorCodes)
+	// Build a lookup of actor codes
+	// actorCodes := map[address.Address]cid.Cid{}
+	// if err := stateTree.ForEach(func(a address.Address, act *types.Actor) error {
+	// 	actorCodes[a] = act.Code
+	// 	fmt.Println("somerr1", err, a, act.Code)
+	// 	return nil
+	// }); err != nil {
+	// 	fmt.Println("somerr2", err)
+	// 	return nil, xerrors.Errorf("iterate actors: %w", err)
+	// }
+	// fmt.Println("aCs", actorCodes)
+	// actorCodesData, err := json.Marshal(actorCodes)
+	// if err != nil {
+	// 	fmt.Println(err.Error())
+	// 	return nil, xerrors.Errorf("json.Marshal: %w", err)
+	// }
+	// jsonStr := string(actorCodesData)
+
+	// f, _ := os.Create("actors.json")
+	// defer f.Close()
+	// w := bufio.NewWriter(f)
+	// n4, _ := w.WriteString(jsonStr)
+	// fmt.Printf("wrote %d bytes\n", n4)
+	// w.Flush()
 
 	getActorCode := func(a address.Address) cid.Cid {
 		c, ok := actorCodes[a]
@@ -174,6 +227,7 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 	if err != nil {
 		return nil, xerrors.Errorf("get parent messages: %w", err)
 	}
+	fmt.Println("MSGs", msgs)
 
 	// Get receipts for parent messages
 	rcpts, err := aw.ChainGetParentReceipts(ctx, ts.Cids()[0])
@@ -189,7 +243,6 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 	// Start building a list of completed message with receipt
 	emsgs := make([]*lens.ExecutedMessage, 0, len(msgs))
 
-	fmt.Println("emsgs", emsgs, msgs)
 	for index, m := range msgs {
 		emsgs = append(emsgs, &lens.ExecutedMessage{
 			Cid:           m.Cid,
@@ -206,8 +259,3 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 
 	return emsgs, nil
 }
-
-// type Fault struct {
-// 	Miner address.Address
-// 	Epoch abi.ChainEpoch
-// }

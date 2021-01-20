@@ -2,10 +2,10 @@ package chain
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/xerrors"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/db"
@@ -32,7 +32,7 @@ func NewMarketProcessor(opener lens.APIOpener, store db.Store) *MarketProcessor 
 
 func (p *MarketProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (model.Persistable, error) {
 	var data model.Persistable
-
+	log.Info("marketPTS")
 	if p.node == nil {
 		node, closer, err := p.opener.Open(ctx)
 		if err != nil {
@@ -44,13 +44,15 @@ func (p *MarketProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (
 	// var pl model.PersistableList
 
 	tsk := ts.Key()
-	fmt.Println("mtsk", tsk)
+	log.Info("markettsk", tsk)
 	dealStates, err := p.node.StateMarketDeals(context.Background(), tsk)
 	if err != nil {
+		log.Error("SMD", err)
 		return nil, err
 	}
-	fmt.Println("dealStates", dealStates)
+	log.Info("marketDS", dealStates)
 
+	var marketdealproposalslist []marketmodel.MarketDealProposal
 	states := make(marketmodel.MarketDealStates, len(dealStates))
 	proposals := make(marketmodel.MarketDealProposals, len(dealStates))
 	idx := 0
@@ -84,9 +86,29 @@ func (p *MarketProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (
 			IsVerified:           deal.Proposal.VerifiedDeal,
 			Label:                deal.Proposal.Label,
 		}
-		p.store.PersistMarketDealProposals(*proposals[idx])
+		// p.store.PersistMarketDealProposals(*proposals[idx])
 		idx++
+		marketdealproposalslist = append(marketdealproposalslist, marketmodel.MarketDealProposal{
+			Height:               int64(ts.Height()),
+			DealID:               dealID,
+			StateRoot:            ts.ParentState().String(),
+			PaddedPieceSize:      uint64(deal.Proposal.PieceSize),
+			UnpaddedPieceSize:    uint64(deal.Proposal.PieceSize.Unpadded()),
+			StartEpoch:           int64(deal.Proposal.StartEpoch),
+			EndEpoch:             int64(deal.Proposal.EndEpoch),
+			ClientID:             deal.Proposal.Client.String(),
+			ProviderID:           deal.Proposal.Provider.String(),
+			ClientCollateral:     deal.Proposal.ClientCollateral.String(),
+			ProviderCollateral:   deal.Proposal.ProviderCollateral.String(),
+			StoragePricePerEpoch: deal.Proposal.StoragePricePerEpoch.String(),
+			PieceCID:             deal.Proposal.PieceCID.String(),
+			IsVerified:           deal.Proposal.VerifiedDeal,
+			Label:                deal.Proposal.Label,
+		})
 	}
+
+	log.Info("marketdealproposalslist", marketdealproposalslist)
+	p.store.PersistMarketDealProposals(marketdealproposalslist)
 
 	return data, nil
 }

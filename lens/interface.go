@@ -45,6 +45,7 @@ type ChainAPI interface {
 	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 
+	ChainGetMessage(context.Context, cid.Cid) (*types.Message, error)
 	ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api.BlockMessages, error)
 	ChainGetParentMessages(ctx context.Context, blockCid cid.Cid) ([]api.Message, error)
 	ChainGetParentReceipts(ctx context.Context, blockCid cid.Cid) ([]*types.MessageReceipt, error)
@@ -57,8 +58,12 @@ type StateAPI interface {
 	StateGetReceipt(ctx context.Context, bcid cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error)
 	StateListActors(context.Context, types.TipSetKey) ([]address.Address, error)
 	StateListMiners(context.Context, types.TipSetKey) ([]address.Address, error)
+	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
+	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateMarketDeals(context.Context, types.TipSetKey) (map[string]api.MarketDeal, error)
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
+	// StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]api.Deadline, error)
+	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
 	StateMinerSectors(ctx context.Context, addr address.Address, bf *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
 	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
@@ -93,4 +98,8 @@ type ExecutedMessage struct {
 type Fault struct {
 	Miner address.Address
 	Epoch abi.ChainEpoch
+}
+
+type Deadline struct {
+	PostSubmissions bitfield.BitField
 }

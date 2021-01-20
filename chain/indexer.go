@@ -3,8 +3,6 @@ package chain
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"reflect"
 	"sync"
 	"time"
 
@@ -55,7 +53,7 @@ func NewTipSetIndexer(o lens.APIOpener, db *sql.DB, store db.Store, s model.Stor
 	}
 
 	for _, task := range tasks {
-		fmt.Println(task)
+		log.Info("task", task)
 		switch task {
 		case BlocksTask:
 			tsi.processors[BlocksTask] = NewBlockProcessor(store)
@@ -85,7 +83,7 @@ func (t *TipSetIndexer) TipSet(ctx context.Context, ts *types.TipSet) error {
 	defer cancel()
 
 	start := time.Now()
-	fmt.Println(start, tctx)
+	// fmt.Println(start, tctx)
 
 	inFlight := 0
 	results := make(chan *TaskResult, len(t.processors)+len(t.actorProcessors))
@@ -103,7 +101,6 @@ func (t *TipSetIndexer) TipSet(ctx context.Context, ts *types.TipSet) error {
 	for inFlight > 0 {
 		res := <-results
 		inFlight--
-		fmt.Println("inflight > 0", res)
 
 		// Was there a fatal error?
 		if res.Error != nil {
@@ -115,7 +112,7 @@ func (t *TipSetIndexer) TipSet(ctx context.Context, ts *types.TipSet) error {
 			return res.Error
 		}
 
-		fmt.Println("torestak", res.Data)
+		// fmt.Println("torestak", res.Data)
 		// Persist the processing report and the data in a single transaction
 		taskOutputs[res.Task] = model.PersistableList{res.Data}
 	}
@@ -123,7 +120,7 @@ func (t *TipSetIndexer) TipSet(ctx context.Context, ts *types.TipSet) error {
 	// remember the last tipset we observed
 	t.lastTipSet = ts
 
-	fmt.Println("TOUTPUTS", taskOutputs)
+	// fmt.Println("TOUTPUTS", taskOutputs)
 
 	if len(taskOutputs) == 0 {
 		// Nothing to persist
@@ -132,7 +129,7 @@ func (t *TipSetIndexer) TipSet(ctx context.Context, ts *types.TipSet) error {
 	}
 
 	// wait until there is an empty slot before persisting
-	log.Print("waiting to persist data", "time", time.Since(start))
+	// log.Print("waiting to persist data", "time", time.Since(start))
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -147,7 +144,7 @@ func (t *TipSetIndexer) TipSet(ctx context.Context, ts *types.TipSet) error {
 			<-t.persistSlot
 		}()
 
-		log.Println("persisting data", "time", time.Since(start))
+		// log.Println("persisting data", "time", time.Since(start))
 		var wg sync.WaitGroup
 		wg.Add(len(taskOutputs))
 
@@ -156,14 +153,14 @@ func (t *TipSetIndexer) TipSet(ctx context.Context, ts *types.TipSet) error {
 			go func(task string, p model.Persistable) {
 				defer wg.Done()
 				if err := t.storage.PersistBatch(ctx, p); err != nil {
-					log.Println("persistence failed", "task", task, "error", err)
+					// log.Println("persistence failed", "task", task, "error", err)
 					return
 				}
-				log.Println("task data persisted", "task", task, "time", time.Since(start), "typeofp", reflect.TypeOf(p), p)
+				// log.Println("task data persisted", "task", task, "time", time.Since(start), "typeofp", reflect.TypeOf(p), p)
 			}(task, p)
 		}
 		wg.Wait()
-		log.Println("tipset complete", "total_time", time.Since(start))
+		// log.Println("tipset complete", "total_time", time.Since(start))
 	}()
 
 	return nil
@@ -171,7 +168,6 @@ func (t *TipSetIndexer) TipSet(ctx context.Context, ts *types.TipSet) error {
 
 func (t *TipSetIndexer) runProcessor(ctx context.Context, p TipSetProcessor, name string, ts *types.TipSet, results chan *TaskResult) {
 	data, err := p.ProcessTipSet(ctx, ts)
-	fmt.Println("PTSd", data)
 	if err != nil {
 		results <- &TaskResult{
 			Task:  name,

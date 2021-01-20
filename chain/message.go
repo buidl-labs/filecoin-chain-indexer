@@ -44,17 +44,16 @@ func (p *MessageProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) 
 
 	var data model.Persistable
 	var err error
-	var txns messagemodel.Transactions
+	var txns []messagemodel.Transaction
 
-	fmt.Println("inside messageprocessor.ProcessTipSet")
-
+	fmt.Println("msgPT")
 	if p.lastTipSet != nil {
 		if p.lastTipSet.Height() > ts.Height() {
-			fmt.Println("p.lastTipSet.Height() > ts.Height()")
+			log.Info("p.lastTipSet.Height() > ts.Height()")
 			// last tipset seen was the child
 			data, txns, err = p.processExecutedMessages(ctx, p.lastTipSet, ts)
 		} else if p.lastTipSet.Height() < ts.Height() {
-			fmt.Println("p.lastTipSet.Height() < ts.Height()")
+			log.Info("p.lastTipSet.Height() < ts.Height()")
 			// last tipset seen was the parent
 			data, txns, err = p.processExecutedMessages(ctx, ts, p.lastTipSet)
 		} else {
@@ -62,7 +61,7 @@ func (p *MessageProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) 
 		}
 	}
 
-	fmt.Println("Ptipset", data)
+	fmt.Println("Ptipset", data, txns)
 
 	p.lastTipSet = ts
 
@@ -73,21 +72,17 @@ func (p *MessageProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) 
 		}
 	}
 
-	for _, txn := range txns {
-		fmt.Println("gortxn", txn, txn.Cid)
-		p.store.PersistTransactions(*txn)
-	}
+	log.Info("MTXNS", txns)
+	p.store.PersistTransactions(txns)
 
 	return data, err
 }
 
-func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts *types.TipSet) (model.Persistable, messagemodel.Transactions, error) {
-	fmt.Println("in processExecutedMessages")
-
+func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts *types.TipSet) (model.Persistable, []messagemodel.Transaction, error) {
 	emsgs, err := p.node.GetExecutedMessagesForTipset(ctx, ts, pts)
+	fmt.Println("HEREemsgs", emsgs)
 	if err != nil {
-		fmt.Println("Failed to get executed messages!")
-		return nil, nil, nil
+		return nil, nil, err
 	}
 
 	var (
@@ -95,7 +90,7 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 		receiptResults      = make(messagemodel.Receipts, 0, len(emsgs))
 		blockMessageResults = make(messagemodel.BlockMessages, 0, len(emsgs))
 		// parsedMessageResults = make(messagemodel.ParsedMessages, 0, len(emsgs))
-		transactionsResults = make(messagemodel.Transactions, 0, len(emsgs))
+		transactionsResults = make([]messagemodel.Transaction, 0, len(emsgs))
 		errorsDetected      = make([]*MessageError, 0, len(emsgs))
 	)
 
@@ -156,6 +151,7 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 			MethodName: methodNames[m.Message.Method],
 		}
 		messageResults = append(messageResults, msg)
+		log.Info("messageResults", messageResults)
 
 		rcpt := &messagemodel.Receipt{
 			Height:    int64(ts.Height()), // this is the child height
@@ -168,12 +164,13 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 		receiptResults = append(receiptResults, rcpt)
 
 		outputs := p.node.ComputeGasOutputs(m.Receipt.GasUsed, m.Message.GasLimit, m.BlockHeader.ParentBaseFee, m.Message.GasFeeCap, m.Message.GasPremium)
-		transaction := &messagemodel.Transaction{
+		transaction := messagemodel.Transaction{
 			Height:             msg.Height,
 			Cid:                msg.Cid,
 			FromAddr:           msg.From,
 			ToAddr:             msg.To,
 			Amount:             msg.Value,
+			Type:               0,
 			GasFeeCap:          msg.GasFeeCap,
 			GasPremium:         msg.GasPremium,
 			GasLimit:           msg.GasLimit,
@@ -194,7 +191,6 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 			GasBurned:          outputs.GasBurned,
 			ActorName:          builtin2.ActorNameByCode(m.ToActorCode),
 		}
-		fmt.Println("GasO/P", transaction)
 		transactionsResults = append(transactionsResults, transaction)
 
 		// method, params, err := p.parseMessageParams(m.Message, m.ToActorCode)
@@ -245,7 +241,7 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 		receiptResults,
 		blockMessageResults,
 		// parsedMessageResults,
-		transactionsResults,
+		// transactionsResults,
 		// messageGasEconomyResult,
 	}, transactionsResults, nil
 }

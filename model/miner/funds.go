@@ -1,12 +1,11 @@
 package miner
 
-import "math/big"
-
-type MinerFunds struct {
+type MinerFund struct {
 	MinerID           string
-	Height            big.Int
-	LockedFunds       float64
-	InitialPledge     float64
-	PreCommitDeposits float64
-	AvailableBalance  float64
+	Height            int64
+	StateRoot         string
+	LockedFunds       string
+	InitialPledge     string
+	PreCommitDeposits string
+	AvailableBalance  string
 }

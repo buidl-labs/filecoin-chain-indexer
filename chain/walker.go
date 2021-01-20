@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -45,29 +44,28 @@ func (c *Walker) Run(ctx context.Context) error {
 	if err != nil {
 		return xerrors.Errorf("get chain head: %w", err)
 	}
-	fmt.Println("after chainHead func call")
+	log.Info("after ChainHead func call")
 
 	if c.taskType == 1 {
-		log.Println("taskType 1 (currentEpochTasks): found tipset", "height", ts.Height())
+		log.Info("taskType 1 (currentEpochTasks): found tipset", "height", ts.Height())
 		if err := c.obs.TipSet(ctx, ts); err != nil {
 			return xerrors.Errorf("notify tipset: %w", err)
 		}
 	} else {
-		log.Println("taskType 0 (allEpochsTasks): found tipset", "height", ts.Height())
+		log.Info("taskType 0 (allEpochsTasks): found tipset", "height", ts.Height())
 
 		if int64(ts.Height()) < c.minHeight {
-			fmt.Println("int64(ts.Height()) < c.minHeight")
+			log.Info("int64(ts.Height()) < c.minHeight")
 			return xerrors.Errorf("cannot walk history, chain head (%d) is earlier than minimum height (%d)", int64(ts.Height()), c.minHeight)
 		}
 
 		if int64(ts.Height()) > c.maxHeight {
-			fmt.Println("int64(ts.Height()) > c.maxHeight")
-
+			log.Info("int64(ts.Height()) > c.maxHeight")
 			ts, err = node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(c.maxHeight), types.EmptyTSK)
 			if err != nil {
 				return xerrors.Errorf("get tipset by height: %w", err)
 			}
-			fmt.Println("now ts", ts)
+			log.Info("ts by height", ts)
 		}
 
 		if err := c.WalkChain(ctx, node, ts); err != nil {
@@ -79,8 +77,7 @@ func (c *Walker) Run(ctx context.Context) error {
 }
 
 func (c *Walker) WalkChain(ctx context.Context, node lens.API, ts *types.TipSet) error {
-	fmt.Println("in walkchain")
-	log.Println("found tipset", "height", ts.Height())
+	log.Info("in WalkChain", "found tipset", "height", ts.Height())
 	if err := c.obs.TipSet(ctx, ts); err != nil {
 		return xerrors.Errorf("notify tipset: %w", err)
 	}
@@ -98,7 +95,7 @@ func (c *Walker) WalkChain(ctx context.Context, node lens.API, ts *types.TipSet)
 			return xerrors.Errorf("get tipset: %w", err)
 		}
 
-		log.Println("found tipset", "height", ts.Height())
+		log.Info("found tipset", "height", ts.Height())
 		if err := c.obs.TipSet(ctx, ts); err != nil {
 			return xerrors.Errorf("notify tipset: %w", err)
 		}
