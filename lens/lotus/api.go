@@ -153,6 +153,9 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 	}
 	fmt.Println("LST", stateTree)
 
+	// TODO: load from db (or some key-value store)
+	// Listen for new actors and insert them into the store
+	// Doing this since loading actors from state tree is time consuming.
 	plan, _ := ioutil.ReadFile("actorCodes.json")
 	// var data interface{}
 	var results map[string]string // address.Address]cid.Cid
