@@ -23,10 +23,11 @@ const (
 )
 
 type MinerSectorEvent struct {
-	Height    int64  `pg:",pk,notnull,use_zero"`
-	MinerID   string `pg:",pk,notnull"`
-	SectorID  uint64 `pg:",pk,use_zero"`
-	StateRoot string `pg:",pk,notnull"`
+	tableName struct{} `pg:"miner_sector_events"` // nolint: structcheck,unused
+	Height    int64    `pg:",pk,notnull,use_zero"`
+	MinerID   string   `pg:",pk,notnull"`
+	SectorID  uint64   `pg:",pk,use_zero"`
+	StateRoot string   `pg:",pk,notnull"`
 
 	// https://github.com/go-pg/pg/issues/993
 	// override the SQL type with enum type, see 1_chainwatch.go for enum definition

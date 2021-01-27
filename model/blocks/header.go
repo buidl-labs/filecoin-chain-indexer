@@ -9,12 +9,13 @@ import (
 )
 
 type BlockHeader struct {
-	Height          int64  `pg:",pk,use_zero,notnull"`
-	Cid             string `pg:",pk,notnull"`
-	MinerID         string `pg:",notnull"`
-	ParentWeight    string `pg:",notnull"`
-	ParentBaseFee   string `pg:",notnull"`
-	ParentStateRoot string `pg:",notnull"`
+	tableName       struct{} `pg:"block_headers"` // nolint: structcheck,unused
+	Height          int64    `pg:",pk,use_zero,notnull"`
+	Cid             string   `pg:",pk,notnull"`
+	MinerID         string   `pg:",notnull"`
+	ParentWeight    string   `pg:",notnull"`
+	ParentBaseFee   string   `pg:",notnull"`
+	ParentStateRoot string   `pg:",notnull"`
 
 	WinCount      int64  `pg:",use_zero"`
 	Timestamp     uint64 `pg:",use_zero"`

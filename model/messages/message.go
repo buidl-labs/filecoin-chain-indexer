@@ -7,8 +7,9 @@ import (
 )
 
 type Message struct {
-	Height int64  `pg:",pk,notnull,use_zero"`
-	Cid    string `pg:",pk,notnull"`
+	tableName struct{} `pg:"messages"` // nolint: structcheck,unused
+	Height    int64    `pg:",pk,notnull,use_zero"`
+	Cid       string   `pg:",pk,notnull"`
 
 	From       string `pg:",notnull"`
 	To         string `pg:",notnull"`

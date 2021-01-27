@@ -7,9 +7,10 @@ import (
 )
 
 type MinerSectorPost struct {
-	Height   int64  `pg:",pk,notnull,use_zero"`
-	MinerID  string `pg:",pk,notnull"`
-	SectorID uint64 `pg:",pk,notnull,use_zero"`
+	tableName struct{} `pg:"miner_sector_posts"` // nolint: structcheck,unused
+	Height    int64    `pg:",pk,notnull,use_zero"`
+	MinerID   string   `pg:",pk,notnull"`
+	SectorID  uint64   `pg:",pk,notnull,use_zero"`
 
 	PostMessageCID string
 }

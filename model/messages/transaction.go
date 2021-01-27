@@ -17,11 +17,10 @@ const (
 )
 
 type Transaction struct {
+	tableName          struct{}        `pg:"transactions"` // nolint: structcheck,unused
 	Height             int64           `pg:",pk,use_zero,notnull"`
-	Timestamp          uint64          `pg:",notnull"`
 	Cid                string          `pg:",pk,notnull"`
 	StateRoot          string          `pg:",pk,notnull"`
-	MinerID            string          `pg:",notnull"` // minerid
 	FromAddr           string          `pg:",notnull"` // miner/owner/worker/from account
 	ToAddr             string          `pg:",notnull"` // miner/owner/worker/to account
 	Amount             string          `pg:",notnull"` // amount (+/- FIL)

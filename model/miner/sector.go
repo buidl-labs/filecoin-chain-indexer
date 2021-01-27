@@ -9,10 +9,11 @@ import (
 )
 
 type MinerSectorInfo struct {
-	Height    int64  `pg:",pk,notnull,use_zero"`
-	MinerID   string `pg:",pk,notnull"`
-	SectorID  uint64 `pg:",pk,use_zero"`
-	StateRoot string `pg:",pk,notnull"`
+	tableName struct{} `pg:"miner_sector_infos"` // nolint: structcheck,unused
+	Height    int64    `pg:",pk,notnull,use_zero"`
+	MinerID   string   `pg:",pk,notnull"`
+	SectorID  uint64   `pg:",pk,use_zero"`
+	StateRoot string   `pg:",pk,notnull"`
 
 	SealedCID string `pg:",notnull"`
 

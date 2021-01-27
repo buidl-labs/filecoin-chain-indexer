@@ -7,10 +7,11 @@ import (
 )
 
 type MinerSectorDeal struct {
-	Height   int64  `pg:",pk,notnull,use_zero"`
-	MinerID  string `pg:",pk,notnull"`
-	SectorID uint64 `pg:",pk,use_zero"`
-	DealID   uint64 `pg:",pk,use_zero"`
+	tableName struct{} `pg:"miner_sector_deals"` // nolint: structcheck,unused
+	Height    int64    `pg:",pk,notnull,use_zero"`
+	MinerID   string   `pg:",pk,notnull"`
+	SectorID  uint64   `pg:",pk,use_zero"`
+	DealID    uint64   `pg:",pk,use_zero"`
 }
 
 func (ds *MinerSectorDeal) Persist(ctx context.Context, s model.StorageBatch) error {

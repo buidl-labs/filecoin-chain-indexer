@@ -7,11 +7,12 @@ import (
 )
 
 type MarketDealState struct {
-	Height           int64  `pg:",pk,notnull,use_zero"`
-	DealID           uint64 `pg:",pk,use_zero"`
-	SectorStartEpoch int64  `pg:",pk,use_zero"`
-	LastUpdateEpoch  int64  `pg:",pk,use_zero"`
-	SlashEpoch       int64  `pg:",pk,use_zero"`
+	tableName        struct{} `pg:"market_deal_states"` // nolint: structcheck,unused
+	Height           int64    `pg:",pk,notnull,use_zero"`
+	DealID           uint64   `pg:",pk,use_zero"`
+	SectorStartEpoch int64    `pg:",pk,use_zero"`
+	LastUpdateEpoch  int64    `pg:",pk,use_zero"`
+	SlashEpoch       int64    `pg:",pk,use_zero"`
 
 	StateRoot string `pg:",notnull"`
 }

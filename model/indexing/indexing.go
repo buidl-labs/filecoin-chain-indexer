@@ -1,5 +1,6 @@
 package indexing
 
 type ParsedTill struct {
-	Height int64
+	tableName struct{} `pg:"parsed_till"` // nolint: structcheck,unused
+	Height    int64    `pg:",pk,notnull,use_zero"`
 }

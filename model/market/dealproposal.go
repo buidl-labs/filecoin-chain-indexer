@@ -7,9 +7,10 @@ import (
 )
 
 type MarketDealProposal struct {
-	Height    int64  `pg:",pk,notnull,use_zero"`
-	DealID    uint64 `pg:",pk,use_zero"`
-	StateRoot string `pg:",notnull"`
+	tableName struct{} `pg:"market_deal_proposals"` // nolint: structcheck,unused
+	Height    int64    `pg:",pk,notnull,use_zero"`
+	DealID    uint64   `pg:",pk,use_zero"`
+	StateRoot string   `pg:",notnull"`
 
 	PaddedPieceSize   uint64 `pg:",use_zero"`
 	UnpaddedPieceSize uint64 `pg:",use_zero"`

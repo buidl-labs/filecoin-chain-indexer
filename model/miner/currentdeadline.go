@@ -7,9 +7,10 @@ import (
 )
 
 type MinerCurrentDeadlineInfo struct {
-	Height    int64  `pg:",pk,notnull,use_zero"`
-	MinerID   string `pg:",pk,notnull"`
-	StateRoot string `pg:",pk,notnull"`
+	tableName struct{} `pg:"miner_current_deadline_infos"` // nolint: structcheck,unused
+	Height    int64    `pg:",pk,notnull,use_zero"`
+	MinerID   string   `pg:",pk,notnull"`
+	StateRoot string   `pg:",pk,notnull"`
 
 	DeadlineIndex uint64 `pg:",notnull,use_zero"`
 	PeriodStart   int64  `pg:",notnull,use_zero"`
