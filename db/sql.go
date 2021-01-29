@@ -84,7 +84,7 @@ func (s *Store) PersistTransactions(txns []messagemodel.Transaction) error {
 		return nil
 	}
 	query := "INSERT INTO transactions (" +
-		"cid, height, from_addr, to_addr, " +
+		"cid, height, sender, receiver, " +
 		"amount, type, gas_fee_cap, gas_premium, " +
 		"gas_limit, size_bytes, nonce, method, method_name, " +
 		"state_root, exit_code, gas_used, parent_base_fee, " +
@@ -100,8 +100,8 @@ func (s *Store) PersistTransactions(txns []messagemodel.Transaction) error {
 		query += generateQuery(cols, c)
 		valueArgs = append(valueArgs, txn.Cid)
 		valueArgs = append(valueArgs, txn.Height)
-		valueArgs = append(valueArgs, txn.FromAddr)
-		valueArgs = append(valueArgs, txn.ToAddr)
+		valueArgs = append(valueArgs, txn.Sender)
+		valueArgs = append(valueArgs, txn.Receiver)
 		valueArgs = append(valueArgs, txn.Amount)
 		valueArgs = append(valueArgs, txn.Type)
 		valueArgs = append(valueArgs, txn.GasFeeCap)

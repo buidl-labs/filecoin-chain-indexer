@@ -5,8 +5,8 @@ CREATE TABLE transactions
 (
     "cid" TEXT NOT NULL,
     "height" BIGINT NOT NULL,
-    "from_addr" TEXT NOT NULL,
-    "to_addr" TEXT NOT NULL,
+    "sender" TEXT NOT NULL,
+    "receiver" TEXT NOT NULL,
     "amount" TEXT NOT NULL,
     "type" INT,
     "gas_fee_cap" TEXT NOT NULL,
@@ -28,7 +28,7 @@ CREATE TABLE transactions
     "gas_refund" BIGINT NOT NULL,
     "gas_burned" BIGINT NOT NULL,
     "actor_name" TEXT,
-    PRIMARY KEY ("cid")
+    PRIMARY KEY ("height", "cid", "state_root")
 );
 
 CREATE TABLE block_headers
@@ -41,14 +41,16 @@ CREATE TABLE block_headers
     "parent_base_fee" TEXT NOT NULL,
     "fork_signaling" BIGINT NOT NULL,
     "win_count" BIGINT,
-    "timestamp" BIGINT NOT NULL
+    "timestamp" BIGINT NOT NULL,
+    PRIMARY KEY ("height", "cid")
 );
 
 CREATE TABLE block_messages
 (
     "block" TEXT NOT NULL,
     "message" TEXT NOT NULL,
-    "height" BIGINT NOT NULL
+    "height" BIGINT NOT NULL,
+    PRIMARY KEY ("height", "block", "message")
 );
 
 CREATE TABLE receipts
@@ -58,7 +60,8 @@ CREATE TABLE receipts
     "idx" BIGINT NOT NULL,
     "exit_code" BIGINT NOT NULL,
     "gas_used" BIGINT NOT NULL,
-    "height" BIGINT NOT NULL
+    "height" BIGINT NOT NULL,
+    PRIMARY KEY ("height", "message", "state_root")
 );
 
 CREATE TABLE miner_infos
@@ -69,9 +72,11 @@ CREATE TABLE miner_infos
     "owner_id" TEXT NOT NULL,
     "worker_id" TEXT NOT NULL,
     "height" BIGINT NOT NULL,
+    "state_root" TEXT NOT NULL,
     "storage_ask_price" TEXT NOT NULL,
     "min_piece_size" BIGINT NOT NULL,
-    "max_piece_size" BIGINT NOT NULL
+    "max_piece_size" BIGINT NOT NULL,
+    PRIMARY KEY ("height", "miner_id", "state_root")
 );
 
 CREATE TABLE miner_funds
@@ -82,20 +87,17 @@ CREATE TABLE miner_funds
     "locked_funds" TEXT NOT NULL,
     "initial_pledge" TEXT NOT NULL,
     "pre_commit_deposits" TEXT NOT NULL,
-    "available_balance" TEXT NOT NULL
+    "available_balance" TEXT NOT NULL,
+    PRIMARY KEY ("height", "miner_id", "state_root")
 );
 
-CREATE TABLE miner_quality
+CREATE TABLE miner_fee_debts
 (
+    "height" BIGINT NOT NULL,
     "miner_id" TEXT NOT NULL,
-    "quality_adj_power" TEXT NOT NULL,
-    "raw_byte_power" TEXT NOT NULL,
-    "win_count" BIGINT NOT NULL ,
-    "data_stored" TEXT NOT NULL,
-    "blocks_mined" BIGINT NOT NULL,
-    "mining_efficiency" TEXT NOT NULL,
-    "faulty_sectors" BIGINT NOT NULL,
-    "height" BIGINT NOT NULL
+    "state_root" TEXT NOT NULL,
+    "fee_debt" TEXT NOT NULL,
+    PRIMARY KEY ("height", "miner_id", "state_root")
 );
 
 CREATE TABLE miner_current_deadline_infos
@@ -135,7 +137,8 @@ CREATE TABLE miner_sector_deals
     "height" BIGINT NOT NULL,
     "miner_id" TEXT NOT NULL,
     "sector_id" BIGINT NOT NULL,
-    "deal_id" BIGINT NOT NULL
+    "deal_id" BIGINT NOT NULL,
+    PRIMARY KEY ("height", "miner_id", "sector_id", "deal_id")
 );
 
 CREATE TYPE miner_sector_event_type AS ENUM
@@ -154,10 +157,12 @@ CREATE TYPE miner_sector_event_type AS ENUM
 
 CREATE TABLE miner_sector_events
 (
+    "height" BIGINT NOT NULL,
     "miner_id" TEXT NOT NULL,
     "sector_id" BIGINT NOT NULL,
     "state_root" TEXT NOT NULL,
-    "event" miner_sector_event_type NOT NULL
+    "event" miner_sector_event_type NOT NULL,
+    PRIMARY KEY ("height", "sector_id", "event", "miner_id", "state_root")
 );
 
 CREATE TABLE miner_sector_posts
@@ -165,7 +170,8 @@ CREATE TABLE miner_sector_posts
     "height" BIGINT NOT NULL,
     "miner_id" TEXT NOT NULL,
     "sector_id" BIGINT NOT NULL,
-    "post_message_cid" TEXT
+    "post_message_cid" TEXT,
+    PRIMARY KEY ("height", "miner_id", "sector_id")
 );
 
 CREATE TABLE miner_sector_faults
@@ -177,27 +183,78 @@ CREATE TABLE miner_sector_faults
 
 CREATE TABLE market_deal_proposals
 (
-    deal_id bigint NOT NULL,
-    state_root text NOT NULL,
-    piece_cid text NOT NULL,
-    padded_piece_size bigint NOT NULL,
-    unpadded_piece_size bigint NOT NULL,
+    deal_id BIGINT NOT NULL,
+    state_root TEXT NOT NULL,
+    piece_cid TEXT NOT NULL,
+    padded_piece_size BIGINT NOT NULL,
+    unpadded_piece_size BIGINT NOT NULL,
     is_verified boolean NOT NULL,
-    client_id text NOT NULL,
-    provider_id text NOT NULL,
-    start_epoch bigint NOT NULL,
-    end_epoch bigint NOT NULL,
-    slashed_epoch bigint,
-    storage_price_per_epoch text NOT NULL,
-    provider_collateral text NOT NULL,
-    client_collateral text NOT NULL,
-    label text,
-    height bigint NOT NULL
+    client_id TEXT NOT NULL,
+    provider_id TEXT NOT NULL,
+    start_epoch BIGINT NOT NULL,
+    end_epoch BIGINT NOT NULL,
+    slashed_epoch BIGINT,
+    storage_price_per_epoch TEXT NOT NULL,
+    provider_collateral TEXT NOT NULL,
+    client_collateral TEXT NOT NULL,
+    label TEXT,
+    height BIGINT NOT NULL,
+    PRIMARY KEY ("height", "deal_id")
+);
+
+CREATE TABLE chain_economics
+(
+    parent_state_root TEXT NOT NULL,
+    circulating_fil TEXT NOT NULL,
+    vested_fil TEXT NOT NULL,
+    mined_fil TEXT NOT NULL,
+    burnt_fil TEXT NOT NULL,
+    locked_fil TEXT NOT NULL,
+    PRIMARY KEY ("parent_state_root")
+);
+
+CREATE TABLE chain_powers
+(
+    state_root TEXT NOT NULL,
+    total_raw_bytes_power TEXT NOT NULL,
+    total_raw_bytes_committed TEXT NOT NULL,
+    total_qa_bytes_power TEXT NOT NULL,
+    total_qa_bytes_committed TEXT NOT NULL,
+    total_pledge_collateral TEXT NOT NULL,
+    qa_smoothed_position_estimate TEXT NOT NULL,
+    qa_smoothed_velocity_estimate TEXT NOT NULL,
+    miner_count BIGINT,
+    participating_miner_count BIGINT,
+    height BIGINT NOT NULL,
+    PRIMARY KEY ("height", "state_root")
+);
+
+CREATE TABLE power_actor_claims
+(
+    "height" BIGINT NOT NULL,
+    "miner_id" TEXT NOT NULL,
+    "state_root" TEXT NOT NULL,
+    "raw_byte_power" TEXT NOT NULL,
+    "quality_adj_power" TEXT NOT NULL,
+    PRIMARY KEY ("height", "miner_id", "state_root")
+);
+
+CREATE TABLE actors
+(
+    id TEXT NOT NULL,
+    code TEXT NOT NULL,
+    head TEXT NOT NULL,
+    nonce BIGINT NOT NULL,
+    balance TEXT NOT NULL,
+    state_root TEXT NOT NULL,
+    height BIGINT NOT NULL,
+    PRIMARY KEY ("height", "id", "state_root")
 );
 
 CREATE TABLE parsed_till
 (
-    "height" BIGINT NOT NULL
+    "height" BIGINT NOT NULL,
+    PRIMARY KEY ("height")
 );
 
 -- +goose Down
@@ -209,7 +266,7 @@ DROP TABLE block_messages;
 DROP TABLE receipts;
 DROP TABLE miner_infos;
 DROP TABLE miner_funds;
-DROP TABLE miner_quality;
+DROP TABLE miner_fee_debts;
 DROP TABLE miner_current_deadline_infos;
 DROP TABLE miner_sector_infos;
 DROP TABLE miner_sector_deals;
@@ -218,4 +275,8 @@ DROP TABLE miner_sector_posts;
 DROP TABLE miner_sector_faults;
 DROP TYPE IF EXISTS miner_sector_event_type;
 DROP TABLE market_deal_proposals;
+DROP TABLE chain_economics;
+DROP TABLE chain_powers;
+DROP TABLE power_actor_claims;
+DROP TABLE actors;
 DROP TABLE parsed_till;

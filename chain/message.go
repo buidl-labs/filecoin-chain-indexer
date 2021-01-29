@@ -167,8 +167,8 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 		transaction := messagemodel.Transaction{
 			Height:             msg.Height,
 			Cid:                msg.Cid,
-			FromAddr:           msg.From,
-			ToAddr:             msg.To,
+			Sender:             msg.From,
+			Receiver:           msg.To,
 			Amount:             msg.Value,
 			Type:               0,
 			GasFeeCap:          msg.GasFeeCap,

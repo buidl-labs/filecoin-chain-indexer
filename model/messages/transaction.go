@@ -21,8 +21,8 @@ type Transaction struct {
 	Height             int64           `pg:",pk,use_zero,notnull"`
 	Cid                string          `pg:",pk,notnull"`
 	StateRoot          string          `pg:",pk,notnull"`
-	FromAddr           string          `pg:",notnull"` // miner/owner/worker/from account
-	ToAddr             string          `pg:",notnull"` // miner/owner/worker/to account
+	Sender             string          `pg:",notnull"` // miner/owner/worker/from account
+	Receiver           string          `pg:",notnull"` // miner/owner/worker/to account
 	Amount             string          `pg:",notnull"` // amount (+/- FIL)
 	Type               TransactionType `pg:""`
 	GasFeeCap          string          `pg:",notnull"`
