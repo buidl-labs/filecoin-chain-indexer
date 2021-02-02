@@ -12,7 +12,7 @@ WORKDIR /filecoin-chain-indexer
 
 # COPY go.mod go.sum ./
 COPY . .
-RUN git submodule update --init --recursive
+# RUN git submodule update --init --recursive
 RUN go mod download
 RUN go build main.go
 
