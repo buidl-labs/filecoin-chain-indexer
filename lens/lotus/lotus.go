@@ -4,12 +4,12 @@ import (
 	"context"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/filecoin-project/lotus/api/client"
 	lru "github.com/hashicorp/golang-lru"
-	ma "github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
+
+	// ma "github.com/multiformats/go-multiaddr"
+	// manet "github.com/multiformats/go-multiaddr/net"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/xerrors"
 
@@ -29,28 +29,28 @@ func NewAPIOpener(cfg config.Config, cctx context.Context) (*APIOpener, lens.API
 		return nil, nil, xerrors.Errorf("new arc cache: %w", err)
 	}
 
-	var rawaddr, rawtoken string
+	// var rawaddr, rawtoken string
 
-	tokenMaddr := cfg.FullNodeAPIInfo
-	log.Info("tokenmaddr: ", tokenMaddr)
-	toks := strings.Split(tokenMaddr, ":")
-	if len(toks) != 2 {
-		return nil, nil, xerrors.Errorf("invalid api tokens, expected <token>:<maddr>, got: %s", tokenMaddr)
-	}
+	// tokenMaddr := cfg.FullNodeAPIInfo
+	// log.Info("tokenmaddr: ", tokenMaddr)
+	// toks := strings.Split(tokenMaddr, ":")
+	// if len(toks) != 2 {
+	// 	return nil, nil, xerrors.Errorf("invalid api tokens, expected <token>:<maddr>, got: %s", tokenMaddr)
+	// }
 
-	rawtoken = toks[0]
-	rawaddr = toks[1]
+	// rawtoken = toks[0]
+	// rawaddr = toks[1]
 
-	parsedAddr, err := ma.NewMultiaddr(rawaddr)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("parse listen address: %w", err)
-	}
+	// parsedAddr, err := ma.NewMultiaddr(rawaddr)
+	// if err != nil {
+	// 	return nil, nil, xerrors.Errorf("parse listen address: %w", err)
+	// }
 
-	_, addr, err := manet.DialArgs(parsedAddr)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("dial multiaddress: %w", err)
-	}
-	log.Info("addr: ", addr, " rawtoken: ", rawtoken)
+	// _, addr, err := manet.DialArgs(parsedAddr)
+	// if err != nil {
+	// 	return nil, nil, xerrors.Errorf("dial multiaddress: %w", err)
+	// }
+	// log.Info("addr: ", addr, " rawtoken: ", rawtoken)
 	o := &APIOpener{
 		cache: ac,
 		// addr:    apiURI(addr),
