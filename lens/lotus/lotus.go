@@ -2,6 +2,7 @@ package lotus
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 
@@ -51,6 +52,8 @@ func NewAPIOpener(cfg config.Config, cctx context.Context) (*APIOpener, lens.API
 	// 	return nil, nil, xerrors.Errorf("dial multiaddress: %w", err)
 	// }
 	// log.Info("addr: ", addr, " rawtoken: ", rawtoken)
+	log.Info("LOTUS_RPC_ENDPOINT: ", os.Getenv("LOTUS_RPC_ENDPOINT"))
+	fmt.Println("LOTUS_RPC_ENDPOINT: ", os.Getenv("LOTUS_RPC_ENDPOINT"))
 	o := &APIOpener{
 		cache: ac,
 		// addr:    apiURI(addr),
