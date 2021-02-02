@@ -22,7 +22,7 @@ type API interface {
 	ChainAPI
 	StateAPI
 
-	ComputeGasOutputs(gasUsed, gasLimit int64, baseFee, feeCap, gasPremium abi.TokenAmount) vm.GasOutputs
+	// ComputeGasOutputs(gasUsed, gasLimit int64, baseFee, feeCap, gasPremium abi.TokenAmount) vm.GasOutputs
 	GetExecutedMessagesForTipset(ctx context.Context, ts, pts *types.TipSet) ([]*ExecutedMessage, error)
 }
 
@@ -93,6 +93,7 @@ type ExecutedMessage struct {
 	Index         uint64    // Message and receipt sequence in tipset
 	FromActorCode cid.Cid   // code of the actor the message is from
 	ToActorCode   cid.Cid   // code of the actor the message is to
+	GasOutputs    vm.GasOutputs
 }
 
 type Fault struct {

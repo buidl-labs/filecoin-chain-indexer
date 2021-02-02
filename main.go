@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"os"
+	"strconv"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -12,25 +13,30 @@ import (
 )
 
 func walk(cfg config.Config) {
-	allEpochsTasks := []string{"messages"}//, "blocks"}
+	allEpochsTasks := []string{"messages", "blocks"}
 	err := services.Walk(cfg, allEpochsTasks, 0) // taskType=0
 	if err != nil {
 		log.Error("services.walk: allEpochsTasks", err)
 	}
-	// currentEpochTasks := []string{"miners"}//, "markets"}
-	// err := services.Walk(cfg, currentEpochTasks, 1) // taskType=1
-	// if err != nil {
-	// 	log.Error("services.walk: currentEpochTasks", err)
-	// }
+	currentEpochTasks := []string{"miners", "markets"}
+	err = services.Walk(cfg, currentEpochTasks, 1) // taskType=1
+	if err != nil {
+		log.Error("services.walk: currentEpochTasks", err)
+	}
 
 	log.Info("\n\n\nDONE ONE ROUND\n\n\n")
 }
 
 func main() {
+	from, _ := getenvInt("FROM")
+	to, _ := getenvInt("TO")
+
 	cfg := config.Config{
 		DBConnStr:       os.Getenv("DB"),
 		FullNodeAPIInfo: os.Getenv("FULLNODE_API_INFO"),
 		CacheSize:       1, // TODO: Not using chain cache ATM
+		From:            int64(from),
+		To:              int64(to),
 	}
 	log.Info("Starting filecoin-chain-indexer")
 
@@ -51,7 +57,7 @@ func main() {
 	case "index":
 		walk(cfg)
 		// minuteTicker := time.NewTicker(60 * time.Second)
-		minuteTicker := time.NewTicker(2 * time.Minute)
+		minuteTicker := time.NewTicker(36 * time.Hour)
 		for {
 			select {
 			case <-minuteTicker.C:
@@ -61,4 +67,12 @@ func main() {
 	default:
 		log.Fatal("Please use a valid command")
 	}
+}
+
+func getenvInt(key string) (int, error) {
+	v, err := strconv.Atoi(os.Getenv(key))
+	if err != nil {
+		return -1, err
+	}
+	return v, nil
 }

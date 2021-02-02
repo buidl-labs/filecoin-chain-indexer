@@ -54,15 +54,21 @@ func Walk(cfg config.Config, tasks []string, taskType int) error {
 	if err != nil {
 		return xerrors.Errorf("get chain head: %w", err)
 	}
+	from := int64(453935)
+	to := int64(453945)
+	if cfg.From != int64(-1) && cfg.To != int64(-1) {
+		from = cfg.From
+		to = cfg.To
+	}
 
-	maxHeight := int64(ts.Height()) - 100
-	// maxHeight = int64(1000)
+	maxHeight := int64(ts.Height()) - 900 // head - finality
+	maxHeight = to                        //453937)
 	log.Info("maxHeight", maxHeight)
 
 	// TODO: start indexing from a certain height
 	// height := dataservice.GetParsedTill()
-	// minHeight := int64(192698) // setting a dummy value here
-	minHeight := maxHeight - 2
+	minHeight := from //453935) // setting a dummy value here
+	// minHeight := maxHeight - 2
 
 	// walker := chain.NewWalker(&apistruct.FullNodeStruct{}, tsIndexer, 10, 1000)
 	walker := chain.NewWalker(lensOpener, tsIndexer, tasks, taskType, minHeight, maxHeight)

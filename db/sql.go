@@ -13,6 +13,7 @@ import (
 	marketmodel "github.com/buidl-labs/filecoin-chain-indexer/model/market"
 	messagemodel "github.com/buidl-labs/filecoin-chain-indexer/model/messages"
 	minermodel "github.com/buidl-labs/filecoin-chain-indexer/model/miner"
+	powermodel "github.com/buidl-labs/filecoin-chain-indexer/model/power"
 )
 
 type Store struct {
@@ -183,11 +184,11 @@ func (s *Store) PersistMinerInfos(mis []minermodel.MinerInfo) error {
 		return nil
 	}
 	query := "INSERT INTO miner_infos (" +
-		"miner_id, address, peer_id, owner_id, worker_id, " +
-		"height, storage_ask_price, min_piece_size, max_piece_size)" +
+		"miner_id, address, peer_id, owner_id, worker_id, height, " +
+		"state_root, storage_ask_price, min_piece_size, max_piece_size)" +
 		" VALUES "
 	valueArgs := []interface{}{}
-	cols := 9
+	cols := 10
 	c := 1
 	for _, mi := range mis {
 		// query += "($" + strconv.Itoa(c) + ", $" + strconv.Itoa(c+1) + ", $" + strconv.Itoa(c+2) + ", $" + strconv.Itoa(c+3) + ", $" + strconv.Itoa(c+4) + ", $" + strconv.Itoa(c+5) + ", $" + strconv.Itoa(c+6) + ", $" + strconv.Itoa(c+7) + ", $" + strconv.Itoa(c+8) + "),"
@@ -198,6 +199,7 @@ func (s *Store) PersistMinerInfos(mis []minermodel.MinerInfo) error {
 		valueArgs = append(valueArgs, mi.OwnerID)
 		valueArgs = append(valueArgs, mi.WorkerID)
 		valueArgs = append(valueArgs, mi.Height)
+		valueArgs = append(valueArgs, mi.StateRoot)
 		valueArgs = append(valueArgs, mi.StorageAskPrice)
 		valueArgs = append(valueArgs, mi.MinPieceSize)
 		valueArgs = append(valueArgs, mi.MaxPieceSize)
@@ -328,6 +330,40 @@ func (s *Store) PersistMinerQuality(mqs []minermodel.MinerQuality) error {
 		log.Error("insert minerqual", err)
 	}
 	log.Info("res minerqual", res)
+	return nil
+}
+
+func (s *Store) PersistPowerActorClaims(pacs []powermodel.PowerActorClaim) error {
+	if len(pacs) == 0 {
+		log.Info("no pacs")
+		return nil
+	}
+	query := "INSERT INTO power_actor_claims (" +
+		"miner_id, height, state_root, raw_byte_power, quality_adj_power)" +
+		" VALUES "
+	valueArgs := []interface{}{}
+	cols := 5
+	c := 1
+	for _, mq := range pacs {
+		// query += "($" + strconv.Itoa(c) + ", $" + strconv.Itoa(c+1) + ", $" + strconv.Itoa(c+2) + ", $" + strconv.Itoa(c+3) + ", $" + strconv.Itoa(c+4) + ", $" + strconv.Itoa(c+5) + ", $" + strconv.Itoa(c+6) + ", $" + strconv.Itoa(c+7) + ", $" + strconv.Itoa(c+8) + "),"
+		query += generateQuery(cols, c)
+		valueArgs = append(valueArgs, mq.MinerID)
+		valueArgs = append(valueArgs, mq.Height)
+		valueArgs = append(valueArgs, mq.StateRoot)
+		valueArgs = append(valueArgs, mq.RawBytePower)
+		valueArgs = append(valueArgs, mq.QualityAdjPower)
+		c += cols
+	}
+	query = query[0 : len(query)-1]
+	stmt, err := s.db.Prepare(query)
+	if err != nil {
+		log.Error("prep pac", err)
+	}
+	res, err := stmt.Exec(valueArgs...)
+	if err != nil {
+		log.Error("insert pac", err)
+	}
+	log.Info("res pac", res)
 	return nil
 }
 

@@ -3,6 +3,7 @@ package lotus
 import (
 	"context"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/filecoin-project/lotus/api/client"
@@ -54,7 +55,7 @@ func NewAPIOpener(cfg config.Config, cctx context.Context) (*APIOpener, lens.API
 		cache: ac,
 		// addr:    apiURI(addr),
 		// headers: apiHeaders(rawtoken),
-		addr:    "https://api.node.glif.io/rpc/v0",
+		addr:    os.Getenv("LOTUS_RPC_ENDPOINT"),
 		headers: http.Header{},
 	}
 

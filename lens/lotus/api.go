@@ -2,9 +2,7 @@ package lotus
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -15,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -131,9 +130,9 @@ func (aw *APIWrapper) StateReadState(ctx context.Context, actor address.Address,
 	return aw.FullNode.StateReadState(ctx, actor, tsk)
 }
 
-func (aw *APIWrapper) ComputeGasOutputs(gasUsed, gasLimit int64, baseFee, feeCap, gasPremium abi.TokenAmount) vm.GasOutputs {
-	return vm.ComputeGasOutputs(gasUsed, gasLimit, baseFee, feeCap, gasPremium)
-}
+// func (aw *APIWrapper) ComputeGasOutputs(gasUsed, gasLimit int64, baseFee, feeCap, gasPremium abi.TokenAmount) vm.GasOutputs {
+// 	return vm.ComputeGasOutputs(gasUsed, gasLimit, baseFee, feeCap, gasPremium)
+// }
 
 func (aw *APIWrapper) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
 	return aw.FullNode.StateVMCirculatingSupplyInternal(ctx, tsk)
@@ -153,35 +152,40 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 	}
 	fmt.Println("LST", stateTree)
 
+	parentStateTree, err := state.LoadStateTree(aw.Store(), pts.ParentState())
+	if err != nil {
+		return nil, xerrors.Errorf("load parent state tree: %w", err)
+	}
+
 	// TODO: load from db (or some key-value store)
 	// Listen for new actors and insert them into the store
 	// Doing this since loading actors from state tree is time consuming.
-	plan, _ := ioutil.ReadFile("actorCodes.json")
-	// var data interface{}
-	var results map[string]string // address.Address]cid.Cid
-	err = json.Unmarshal([]byte(plan), &results)
-	if err != nil {
-		return nil, xerrors.Errorf("load actorCodes: %w", err)
-	}
-	fmt.Println("HII", "f099", results["f099"])
-	actorCodes := map[address.Address]cid.Cid{}
-	for k, v := range results {
-		a, _ := address.NewFromString(k)
-		c, _ := cid.Decode(v)
-		actorCodes[a] = c
-	}
-	fmt.Println(actorCodes)
-	// Build a lookup of actor codes
-	// actorCodes := map[address.Address]cid.Cid{}
-	// if err := stateTree.ForEach(func(a address.Address, act *types.Actor) error {
-	// 	actorCodes[a] = act.Code
-	// 	fmt.Println("somerr1", err, a, act.Code)
-	// 	return nil
-	// }); err != nil {
-	// 	fmt.Println("somerr2", err)
-	// 	return nil, xerrors.Errorf("iterate actors: %w", err)
+	// plan, _ := ioutil.ReadFile("actorCodes.json")
+	// var results map[string]string // address.Address]cid.Cid
+	// err = json.Unmarshal([]byte(plan), &results)
+	// if err != nil {
+	// 	return nil, xerrors.Errorf("load actorCodes: %w", err)
 	// }
-	// fmt.Println("aCs", actorCodes)
+	// fmt.Println("HII", "f099", results["f099"])
+	// actorCodes := map[address.Address]cid.Cid{}
+	// for k, v := range results {
+	// 	a, _ := address.NewFromString(k)
+	// 	c, _ := cid.Decode(v)
+	// 	actorCodes[a] = c
+	// }
+	// fmt.Println(actorCodes)
+
+	// Build a lookup of actor codes
+	actorCodes := map[address.Address]cid.Cid{}
+	if err := stateTree.ForEach(func(a address.Address, act *types.Actor) error {
+		actorCodes[a] = act.Code
+		fmt.Println("somerr1", err, a, act.Code)
+		return nil
+	}); err != nil {
+		fmt.Println("somerr2", err)
+		return nil, xerrors.Errorf("iterate actors: %w", err)
+	}
+	fmt.Println("aCs", actorCodes)
 	// actorCodesData, err := json.Marshal(actorCodes)
 	// if err != nil {
 	// 	fmt.Println(err.Error())
@@ -246,8 +250,18 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 	// Start building a list of completed message with receipt
 	emsgs := make([]*lens.ExecutedMessage, 0, len(msgs))
 
+	// Create a skeleton vm just for calling ShouldBurn
+	vmi, err := vm.NewVM(ctx, &vm.VMOpts{
+		StateBase: pts.ParentState(),
+		Epoch:     pts.Height(),
+		Bstore:    &apiBlockstore{api: aw.FullNode}, // sadly vm wraps this to turn it back into an adt.Store
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("creating temporary vm: %w", err)
+	}
+
 	for index, m := range msgs {
-		emsgs = append(emsgs, &lens.ExecutedMessage{
+		em := &lens.ExecutedMessage{
 			Cid:           m.Cid,
 			Height:        pts.Height(),
 			Message:       m.Message,
@@ -257,8 +271,64 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 			Index:         uint64(index),
 			FromActorCode: getActorCode(m.Message.From),
 			ToActorCode:   getActorCode(m.Message.To),
-		})
+		}
+
+		burn, err := vmi.ShouldBurn(parentStateTree, m.Message, rcpts[index].ExitCode)
+		if err != nil {
+			return nil, xerrors.Errorf("deciding whether should burn failed: %w", err)
+		}
+
+		em.GasOutputs = vm.ComputeGasOutputs(em.Receipt.GasUsed, em.Message.GasLimit, em.BlockHeader.ParentBaseFee, em.Message.GasFeeCap, em.Message.GasPremium, burn)
+		emsgs = append(emsgs, em)
 	}
 
 	return emsgs, nil
+}
+
+type apiBlockstore struct {
+	api interface {
+		ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+		ChainHasObj(context.Context, cid.Cid) (bool, error)
+	}
+}
+
+func (a *apiBlockstore) Get(c cid.Cid) (blocks.Block, error) {
+	data, err := a.api.ChainReadObj(context.Background(), c)
+	if err != nil {
+		return nil, err
+	}
+
+	return blocks.NewBlockWithCid(data, c)
+}
+
+func (a *apiBlockstore) Has(c cid.Cid) (bool, error) {
+	return a.api.ChainHasObj(context.Background(), c)
+}
+
+func (a *apiBlockstore) DeleteBlock(c cid.Cid) error {
+	return xerrors.Errorf("DeleteBlock not supported by apiBlockstore")
+}
+
+func (a *apiBlockstore) GetSize(c cid.Cid) (int, error) {
+	data, err := a.api.ChainReadObj(context.Background(), c)
+	if err != nil {
+		return 0, err
+	}
+
+	return len(data), nil
+}
+
+func (a *apiBlockstore) Put(b blocks.Block) error {
+	return xerrors.Errorf("Put not supported by apiBlockstore")
+}
+
+func (a *apiBlockstore) PutMany(bs []blocks.Block) error {
+	return xerrors.Errorf("PutMany not supported by apiBlockstore")
+}
+
+func (a *apiBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
+	return nil, xerrors.Errorf("AllKeysChan not supported by apiBlockstore")
+}
+
+func (a *apiBlockstore) HashOnRead(enabled bool) {
 }

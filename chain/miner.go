@@ -14,6 +14,7 @@ import (
 	"github.com/buidl-labs/filecoin-chain-indexer/lens"
 	"github.com/buidl-labs/filecoin-chain-indexer/model"
 	minermodel "github.com/buidl-labs/filecoin-chain-indexer/model/miner"
+	powermodel "github.com/buidl-labs/filecoin-chain-indexer/model/power"
 )
 
 type MinerProcessor struct {
@@ -60,54 +61,53 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 	var fsa []uint64
 	var minerinfoslist []minermodel.MinerInfo
 	// var minerinfoslist []interface{}
-	var minerqualitylist []minermodel.MinerQuality
+	var claimedpowerlist []powermodel.PowerActorClaim
 	var minersectorslist []minermodel.MinerSectorInfo
 	var minersectorfaultslist []minermodel.MinerSectorFault
 	var minerdeadlineslist []minermodel.MinerCurrentDeadlineInfo
 	var minerfundslist []minermodel.MinerFund
 	log.Info("SLM addresses", len(addresses))
-	for _, addr := range addresses {
+	ads := addresses //[:10]
+	log.Info("SLM SLICE", len(ads), ads)
+
+	// var wg sync.WaitGroup
+	// wg.Add(len(addresses))
+	for _, addr := range ads {
+		// go func(addr address.Address) {
 		log.Info("miner", addr)
 		// ida, err := p.node.StateAccountKey(context.Background(), addr, tsk)
 		// if err != nil {
-		// 	return data, err
+		// 	log.Error(err)
 		// }
+		// log.Info("IDA", ida)
 		info, err = p.node.StateMinerInfo(context.Background(), addr, tsk)
 		if err != nil {
 			log.Error(err)
-			// return data, err
 		}
 		mpower, err = p.node.StateMinerPower(context.Background(), addr, tsk)
 		if err != nil {
 			log.Error(err)
-			// return data, err
 		}
 
 		// ask, err := p.node.ClientQueryAsk(context.Background(), *info.PeerId, addr)
 		// if err != nil {
-		// 	fmt.Println("SLMCLientqueryask", err)
+		// 	log.Info("SLMCLientqueryask", err)
 		// } else {
-		// 	fmt.Println("SLMAsk: {minerid:", ask.Miner, "price:", ask.Price, "verifiedP:", ask.VerifiedPrice, "minPS:", ask.MinPieceSize, "maxPS:", ask.MaxPieceSize, "timestamp:", ask.Timestamp, "Expiry:", ask.Expiry, "}")
+		// 	log.Info("SLMAsk: {minerid:", ask.Miner, "price:", ask.Price, "verifiedP:", ask.VerifiedPrice, "minPS:", ask.MinPieceSize, "maxPS:", ask.MaxPieceSize, "timestamp:", ask.Timestamp, "Expiry:", ask.Expiry, "}")
 		// }
+
 		allSectors, err = p.node.StateMinerSectors(context.Background(), addr, nil, tsk)
 		if err != nil {
 			log.Error(err)
-			// return data, err
 		}
 		activeSectors, err = p.node.StateMinerActiveSectors(context.Background(), addr, tsk)
 		if err != nil {
 			log.Error(err)
-			// return data, err
 		}
 		faultySectors, err := p.node.StateMinerFaults(context.Background(), addr, tsk)
 		if err != nil {
 			log.Error(err)
-			// return data, err
 		}
-		// deadlines, err := p.node.StateMinerDeadlines(context.Background(), addr, tsk)
-		// if err != nil {
-		// 	return data, err
-		// }
 
 		log.Info("SLMallSec count", len(allSectors))
 		log.Info("SLMActSec count", len(activeSectors))
@@ -115,28 +115,48 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 		fsa, _ = faultySectors.All(fsc)
 		log.Info("SLMFaultySec count", fsa)
 		log.Info("Info", info)
+		peerID := ""
+		if info.PeerId != nil {
+			peerID = info.PeerId.String()
+		}
+		ownerID := ""
+		// if info.Owner != nil {
+		// 	ownerID = info.Owner.String()
+		// }
+		ownerID = info.Owner.String()
+		workerID := ""
+		// if info.Worker != nil {
+		// 	workerID = info.Worker.String()
+		// }
+		workerID = info.Worker.String()
 		minerinfoslist = append(minerinfoslist, minermodel.MinerInfo{
 			MinerID:         addr.String(),
 			Address:         "",
-			PeerID:          info.PeerId.String(),
-			OwnerID:         info.Owner.String(),
-			WorkerID:        info.Worker.String(),
+			PeerID:          peerID,
+			OwnerID:         ownerID,
+			WorkerID:        workerID,
 			Height:          int64(ts.Height()),
+			StateRoot:       "",
 			StorageAskPrice: "",
 			MinPieceSize:    uint64(0),
 			MaxPieceSize:    uint64(0),
 		})
-		minerqualitylist = append(minerqualitylist, minermodel.MinerQuality{
-			MinerID:          addr.String(),
-			Height:           int64(ts.Height()),
-			QualityAdjPower:  mpower.MinerPower.QualityAdjPower.String(),
-			RawBytePower:     mpower.MinerPower.RawBytePower.String(),
-			WinCount:         uint64(0),
-			DataStored:       "0.0",
-			BlocksMined:      uint64(0),
-			MiningEfficiency: "0.0",
-			FaultySectors:    fsc,
+		rbp := ""
+		if &mpower.MinerPower.RawBytePower != nil {
+			rbp = mpower.MinerPower.RawBytePower.String()
+		}
+		qap := ""
+		if &mpower.MinerPower.QualityAdjPower != nil {
+			qap = mpower.MinerPower.QualityAdjPower.String()
+		}
+		claimedpowerlist = append(claimedpowerlist, powermodel.PowerActorClaim{
+			MinerID:         addr.String(),
+			Height:          int64(ts.Height()),
+			StateRoot:       "",
+			RawBytePower:    rbp,
+			QualityAdjPower: qap,
 		})
+
 		for _, s := range allSectors {
 			minersectorslist = append(minersectorslist, minermodel.MinerSectorInfo{
 				Height:                int64(ts.Height()),
@@ -160,74 +180,36 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 				SectorID: fs,
 			})
 		}
-		// for _, dl := range deadlines {
-		// 	fmt.Println(dl)
-		// 	minerdeadlineslist = append(minerdeadlineslist, minermodel.MinerCurrentDeadlineInfo{
-		// 	})
-		// }
 
 		ec, err := NewMinerStateExtractionContext(p, context.Background(), addr, ts)
 		if err != nil {
 			log.Error(err)
-			// return nil, err
 		} else {
-			currDeadlineInfo, err := ec.CurrState.DeadlineInfo(ec.CurrTs.Height())
+			mcdi, err := ExtractMinerCurrentDeadlineInfo(ec, addr, ts)
 			if err != nil {
-				return nil, err
+				log.Error(err)
+			} else {
+				minerdeadlineslist = append(minerdeadlineslist, *mcdi)
 			}
-			if !ec.IsGenesis() {
-				prevDeadlineInfo, err := ec.PrevState.DeadlineInfo(ec.CurrTs.Height())
-				if err != nil {
-					return nil, err
-				}
-				if prevDeadlineInfo == currDeadlineInfo {
-					return nil, nil
-				}
-			}
-			minerdeadlineslist = append(minerdeadlineslist, minermodel.MinerCurrentDeadlineInfo{
-				Height:        int64(ec.CurrTs.Height()),
-				MinerID:       addr.String(),
-				StateRoot:     ts.ParentState().String(),
-				DeadlineIndex: currDeadlineInfo.Index,
-				PeriodStart:   int64(currDeadlineInfo.PeriodStart),
-				Open:          int64(currDeadlineInfo.Open),
-				Close:         int64(currDeadlineInfo.Close),
-				Challenge:     int64(currDeadlineInfo.Challenge),
-				FaultCutoff:   int64(currDeadlineInfo.FaultCutoff),
-			})
-
-			currLocked, err := ec.CurrState.LockedFunds()
+			mlf, err := ExtractMinerLockedFunds(ec, addr, ts)
 			if err != nil {
-				return nil, xerrors.Errorf("loading current miner locked funds: %w", err)
+				log.Error(err)
+			} else {
+				minerfundslist = append(minerfundslist, *mlf)
 			}
-			if !ec.IsGenesis() {
-				prevLocked, err := ec.PrevState.LockedFunds()
-				if err != nil {
-					return nil, xerrors.Errorf("loading previous miner locked funds: %w", err)
-				}
-				if prevLocked == currLocked {
-					return nil, nil
-				}
-			}
-			minerfundslist = append(minerfundslist, minermodel.MinerFund{
-				Height:            int64(ec.CurrTs.Height()),
-				MinerID:           addr.String(),
-				StateRoot:         ts.ParentState().String(),
-				LockedFunds:       currLocked.VestingFunds.String(),
-				InitialPledge:     currLocked.InitialPledgeRequirement.String(),
-				PreCommitDeposits: currLocked.PreCommitDeposits.String(),
-				AvailableBalance:  "",
-			})
 		}
+
+		// wg.Done()
+		// }(addr)
 	}
+	// wg.Wait()
 	p.store.PersistMinerInfos(minerinfoslist)
-	p.store.PersistMinerQuality(minerqualitylist)
+	p.store.PersistPowerActorClaims(claimedpowerlist)
 	p.store.PersistMinerSectors(minersectorslist)
 	p.store.PersistMinerSectorFaults(minersectorfaultslist)
 	p.store.PersistMinerDeadlines(minerdeadlineslist)
 	p.store.PersistMinerFunds(minerfundslist)
 	// p.store.PersistBatch(minerinfoslist, "miner_info")
-	// p.store.PersistBatch(minerqualitylist, "miner_quality")
 	// p.store.PersistBatch(minersectorslist, "miner_sector_info")
 	// p.store.PersistBatch(minersectorfaultslist, "miner_sector_fault")
 
@@ -291,4 +273,58 @@ type MinerStateExtractionContext struct {
 
 func (m *MinerStateExtractionContext) IsGenesis() bool {
 	return m.CurrTs.Height() == 0
+}
+
+func ExtractMinerCurrentDeadlineInfo(ec *MinerStateExtractionContext, addr address.Address, ts *types.TipSet) (*minermodel.MinerCurrentDeadlineInfo, error) {
+
+	currDeadlineInfo, err := ec.CurrState.DeadlineInfo(ec.CurrTs.Height())
+	if err != nil {
+		return nil, err
+	}
+	if !ec.IsGenesis() {
+		prevDeadlineInfo, err := ec.PrevState.DeadlineInfo(ec.CurrTs.Height())
+		if err != nil {
+			return nil, err
+		}
+		if prevDeadlineInfo == currDeadlineInfo {
+			return nil, nil
+		}
+	}
+
+	return &minermodel.MinerCurrentDeadlineInfo{
+		Height:        int64(ec.CurrTs.Height()),
+		MinerID:       addr.String(),
+		StateRoot:     ts.ParentState().String(),
+		DeadlineIndex: currDeadlineInfo.Index,
+		PeriodStart:   int64(currDeadlineInfo.PeriodStart),
+		Open:          int64(currDeadlineInfo.Open),
+		Close:         int64(currDeadlineInfo.Close),
+		Challenge:     int64(currDeadlineInfo.Challenge),
+		FaultCutoff:   int64(currDeadlineInfo.FaultCutoff),
+	}, nil
+}
+
+func ExtractMinerLockedFunds(ec *MinerStateExtractionContext, addr address.Address, ts *types.TipSet) (*minermodel.MinerFund, error) {
+	currLocked, err := ec.CurrState.LockedFunds()
+	if err != nil {
+		return nil, xerrors.Errorf("loading current miner locked funds: %w", err)
+	}
+	if !ec.IsGenesis() {
+		prevLocked, err := ec.PrevState.LockedFunds()
+		if err != nil {
+			return nil, xerrors.Errorf("loading previous miner locked funds: %w", err)
+		}
+		if prevLocked == currLocked {
+			return nil, nil
+		}
+	}
+	return &minermodel.MinerFund{
+		Height:            int64(ec.CurrTs.Height()),
+		MinerID:           addr.String(),
+		StateRoot:         ts.ParentState().String(),
+		LockedFunds:       currLocked.VestingFunds.String(),
+		InitialPledge:     currLocked.InitialPledgeRequirement.String(),
+		PreCommitDeposits: currLocked.PreCommitDeposits.String(),
+		AvailableBalance:  "",
+	}, nil
 }
