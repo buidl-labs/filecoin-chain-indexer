@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	badger "github.com/dgraph-io/badger/v3"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -15,6 +16,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/xerrors"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/lens"
@@ -176,16 +178,32 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 	// fmt.Println(actorCodes)
 
 	// Build a lookup of actor codes
-	actorCodes := map[address.Address]cid.Cid{}
+	db, err := badger.Open(badger.DefaultOptions("/tmp/badger"))
+	if err != nil {
+		log.Error(err)
+	}
+	defer db.Close()
+
+	// actorCodes := map[address.Address]cid.Cid{}
 	if err := stateTree.ForEach(func(a address.Address, act *types.Actor) error {
-		actorCodes[a] = act.Code
+		// actorCodes[a] = act.Code
 		fmt.Println("somerr1", err, a, act.Code)
+		err := db.Update(func(txn *badger.Txn) error {
+			err := txn.Set([]byte(a.String()), []byte(act.Code.String()))
+			return err
+		})
+		if err != nil {
+			log.Error("badgerupdatekv", err)
+		}
+
 		return nil
 	}); err != nil {
 		fmt.Println("somerr2", err)
 		return nil, xerrors.Errorf("iterate actors: %w", err)
 	}
-	fmt.Println("aCs", actorCodes)
+
+	// fmt.Println("aCs", actorCodes)
+
 	// actorCodesData, err := json.Marshal(actorCodes)
 	// if err != nil {
 	// 	fmt.Println(err.Error())
@@ -201,12 +219,51 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 	// w.Flush()
 
 	getActorCode := func(a address.Address) cid.Cid {
-		c, ok := actorCodes[a]
-		if ok {
-			return c
-		}
+		var valCopy []byte
+		err = db.View(func(txn *badger.Txn) error {
+			item, err := txn.Get([]byte(a.String()))
+			if err != nil {
+				return err
+			}
+			err = item.Value(func(val []byte) error {
+				// This func with val would only be called if item.Value encounters no error.
 
-		return cid.Undef
+				// Accessing val here is valid.
+				fmt.Printf("The answer is: %s\n", a.String(), val)
+
+				// Copying or parsing val is valid.
+				valCopy = append([]byte{}, val...)
+
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+
+			// You must copy it to use it outside item.Value(...).
+			fmt.Printf("The answer is: %s\n", a.String(), valCopy)
+			// Alternatively, you could also use item.ValueCopy().
+			valCopy, err = item.ValueCopy(nil)
+			fmt.Printf("The answer is: %s\n", a.String(), valCopy)
+			return nil
+		})
+		if err != nil {
+			log.Error("HAHA", err)
+			return cid.Undef
+		}
+		cs := string(valCopy)
+		fmt.Println("Got CIDstr: ", cs)
+		c, err := cid.Decode(cs)
+		if err != nil {
+			return cid.Undef
+		}
+		fmt.Println("Got CID: ", c)
+		return c
+		// c, ok := actorCodes[a]
+		// if ok {
+		// 	return c
+		// }
+		// return cid.Undef
 	}
 
 	// Build a lookup of which block headers indexed by their cid

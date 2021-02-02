@@ -7,6 +7,7 @@ require (
 	github.com/btcsuite/btcd v0.21.0-beta // indirect
 	github.com/daaku/go.zipexe v1.0.1 // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
+	github.com/dgraph-io/badger/v3 v3.2011.1
 	github.com/elastic/go-sysinfo v1.5.0 // indirect
 	github.com/elastic/go-windows v1.0.1 // indirect
 	github.com/filecoin-project/go-address v0.0.5
