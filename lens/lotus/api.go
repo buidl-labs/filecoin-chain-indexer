@@ -1,8 +1,11 @@
 package lotus
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -186,19 +189,19 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 		return nil, xerrors.Errorf("iterate actors: %w", err)
 	}
 	fmt.Println("aCs", actorCodes)
-	// actorCodesData, err := json.Marshal(actorCodes)
-	// if err != nil {
-	// 	fmt.Println(err.Error())
-	// 	return nil, xerrors.Errorf("json.Marshal: %w", err)
-	// }
-	// jsonStr := string(actorCodesData)
+	actorCodesData, err := json.Marshal(actorCodes)
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, xerrors.Errorf("json.Marshal: %w", err)
+	}
+	jsonStr := string(actorCodesData)
 
-	// f, _ := os.Create("actors.json")
-	// defer f.Close()
-	// w := bufio.NewWriter(f)
-	// n4, _ := w.WriteString(jsonStr)
-	// fmt.Printf("wrote %d bytes\n", n4)
-	// w.Flush()
+	f, _ := os.Create("/tmp/badger/actors.json")
+	defer f.Close()
+	w := bufio.NewWriter(f)
+	n4, _ := w.WriteString(jsonStr)
+	fmt.Printf("wrote %d bytes\n", n4)
+	w.Flush()
 
 	getActorCode := func(a address.Address) cid.Cid {
 		c, ok := actorCodes[a]
