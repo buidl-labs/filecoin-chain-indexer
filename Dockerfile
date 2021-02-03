@@ -12,7 +12,7 @@ WORKDIR /filecoin-chain-indexer
 
 # COPY go.mod go.sum ./
 COPY . .
-RUN git submodule update --init --recursive
+# RUN git submodule update --init --recursive
 RUN go mod download
 RUN go build main.go
 
@@ -25,7 +25,7 @@ ENV PORT=${PORT}
 ENV POW_TOKEN=${POW_TOKEN}
 ENV POWERGATE_ADDR=${POWERGATE_ADDR}
 
-EXPOSE ${PORT}
+# EXPOSE ${PORT}
 
 # ENTRYPOINT [ "./main", "--cmd=migrate" ]
 
