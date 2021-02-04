@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"strconv"
 	"time"
@@ -13,13 +15,13 @@ import (
 )
 
 func walk(cfg config.Config) {
-	allEpochsTasks := []string{"messages", "blocks"}
-	err := services.Walk(cfg, allEpochsTasks, 0) // taskType=0
-	if err != nil {
-		log.Error("services.walk: allEpochsTasks", err)
-	}
+	// allEpochsTasks := []string{"messages", "blocks"}
+	// err := services.Walk(cfg, allEpochsTasks, 0) // taskType=0
+	// if err != nil {
+	// 	log.Error("services.walk: allEpochsTasks", err)
+	// }
 	currentEpochTasks := []string{"miners", "markets"}
-	err = services.Walk(cfg, currentEpochTasks, 1) // taskType=1
+	err := services.Walk(cfg, currentEpochTasks, 1) // taskType=1
 	if err != nil {
 		log.Error("services.walk: currentEpochTasks", err)
 	}
@@ -28,6 +30,9 @@ func walk(cfg config.Config) {
 }
 
 func main() {
+	go func() {
+		log.Info(http.ListenAndServe("localhost:6060", nil))
+	}()
 	from, _ := getenvInt("FROM")
 	to, _ := getenvInt("TO")
 
