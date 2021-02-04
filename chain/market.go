@@ -47,7 +47,7 @@ func (p *MarketProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (
 	log.Info("markettsk", tsk)
 	dealStates, err := p.node.StateMarketDeals(context.Background(), tsk)
 	if err != nil {
-		log.Error("SMD", err)
+		log.Println("SMD", err)
 		return nil, err
 	}
 	log.Info("marketDS", dealStates)

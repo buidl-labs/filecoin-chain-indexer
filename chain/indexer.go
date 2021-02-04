@@ -195,7 +195,7 @@ func (t *TipSetIndexer) Close() error {
 	}
 	// for name, p := range t.actorProcessors {
 	// 	if err := p.Close(); err != nil {
-	// 		log.Errorw("error received while closing actor task processor", "error", err, "task", name)
+	// 		log.Println("error received while closing actor task processor", "error", err, "task", name)
 	// 	}
 	// }
 	return nil

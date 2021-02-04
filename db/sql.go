@@ -129,11 +129,11 @@ func (s *Store) PersistTransactions(txns []messagemodel.Transaction) error {
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Error("prep txns", err)
+		log.Println("prep txns", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Error("insert txns", err)
+		log.Println("insert txns", err)
 	}
 	log.Info("res txns", res)
 	return nil
@@ -168,11 +168,11 @@ func (s *Store) PersistBlockHeaders(bhs []blocksmodel.BlockHeader) error {
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Error("prep bhs", err)
+		log.Println("prep bhs", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Error("insert bhs", err)
+		log.Println("insert bhs", err)
 	}
 	log.Info("res bhs", res)
 	return nil
@@ -208,11 +208,11 @@ func (s *Store) PersistMinerInfos(mis []minermodel.MinerInfo) error {
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Error("prep minerinfos", err)
+		log.Println("prep minerinfos", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Error("insert minerinfos", err)
+		log.Println("insert minerinfos", err)
 	}
 	log.Info("res minerinfos", res)
 	return nil
@@ -245,11 +245,11 @@ func (s *Store) PersistMinerFunds(mfs []minermodel.MinerFund) error {
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Error("prep minerfunds", err)
+		log.Println("prep minerfunds", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Error("insert minerfunds", err)
+		log.Println("insert minerfunds", err)
 	}
 	log.Info("res funds", res)
 	return nil
@@ -284,11 +284,11 @@ func (s *Store) PersistMinerDeadlines(mds []minermodel.MinerCurrentDeadlineInfo)
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Error("prep minerdeadlines", err)
+		log.Println("prep minerdeadlines", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Error("insert minerdeadlines", err)
+		log.Println("insert minerdeadlines", err)
 	}
 	log.Info("res minerdeadlines", res)
 	return nil
@@ -323,11 +323,11 @@ func (s *Store) PersistMinerQuality(mqs []minermodel.MinerQuality) error {
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Error("prep minerqual", err)
+		log.Println("prep minerqual", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Error("insert minerqual", err)
+		log.Println("insert minerqual", err)
 	}
 	log.Info("res minerqual", res)
 	return nil
@@ -357,11 +357,11 @@ func (s *Store) PersistPowerActorClaims(pacs []powermodel.PowerActorClaim) error
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Error("prep pac", err)
+		log.Println("prep pac", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Error("insert pac", err)
+		log.Println("insert pac", err)
 	}
 	log.Info("res pac", res)
 	return nil
@@ -400,11 +400,11 @@ func (s *Store) PersistMinerSectors(msis []minermodel.MinerSectorInfo) error {
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Error("prep minersectorinfos", err)
+		log.Println("prep minersectorinfos", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Error("insert minersectorinfos", err)
+		log.Println("insert minersectorinfos", err)
 	}
 	log.Info("res minersectorinfos", res)
 	return nil
@@ -444,11 +444,11 @@ func (s *Store) PersistMinerSectorFaults(msfs []minermodel.MinerSectorFault) err
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Error("prep msfaults", err)
+		log.Println("prep msfaults", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Error("insert msfaults", err)
+		log.Println("insert msfaults", err)
 	}
 	log.Info("res msfaults", res)
 	return nil
@@ -492,11 +492,11 @@ func (s *Store) PersistMarketDealProposals(mdps []marketmodel.MarketDealProposal
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Error("prep marketdealprops", err)
+		log.Println("prep marketdealprops", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Error("insert marketdealprops", err)
+		log.Println("insert marketdealprops", err)
 	}
 	log.Info("res marketdealprops", res)
 	return nil

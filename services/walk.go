@@ -39,7 +39,7 @@ func Walk(cfg config.Config, tasks []string, taskType int) error {
 	}
 	defer func() {
 		if err := tsIndexer.Close(); err != nil {
-			log.Error("failed to close tipset indexer cleanly", err)
+			log.Println("failed to close tipset indexer cleanly", err)
 		}
 	}()
 

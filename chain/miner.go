@@ -111,16 +111,16 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 			log.Info("miner", addr)
 			// ida, err := p.node.StateAccountKey(context.Background(), addr, tsk)
 			// if err != nil {
-			// 	log.Error(err)
+			// 	log.Println(err)
 			// }
 			// log.Info("IDA", ida)
 			info, err = p.node.StateMinerInfo(context.Background(), addr, tsk)
 			if err != nil {
-				log.Error(err)
+				log.Println(err)
 			}
 			mpower, err = p.node.StateMinerPower(context.Background(), addr, tsk)
 			if err != nil {
-				log.Error(err)
+				log.Println(err)
 			}
 
 			// ask, err := p.node.ClientQueryAsk(context.Background(), *info.PeerId, addr)
@@ -134,15 +134,15 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 			// var activeSectors []*miner.SectorOnChainInfo
 			allSectors, err = p.node.StateMinerSectors(context.Background(), addr, nil, tsk)
 			if err != nil {
-				log.Error(err)
+				log.Println(err)
 			}
 			// activeSectors, err = p.node.StateMinerActiveSectors(context.Background(), addr, tsk)
 			// if err != nil {
-			// 	log.Error(err)
+			// 	log.Println(err)
 			// }
 			faultySectors, err := p.node.StateMinerFaults(context.Background(), addr, tsk)
 			if err != nil {
-				log.Error(err)
+				log.Println(err)
 			}
 
 			log.Info("SLMallSec count", len(allSectors))
@@ -235,17 +235,17 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 
 			ec, err := NewMinerStateExtractionContext(p, context.Background(), addr, ts)
 			if err != nil {
-				log.Error(err)
+				log.Println(err)
 			} else {
 				mcdi, err := ExtractMinerCurrentDeadlineInfo(ec, addr, ts)
 				if err != nil {
-					log.Error(err)
+					log.Println(err)
 				} else {
 					minerdeadlineslist = append(minerdeadlineslist, *mcdi)
 				}
 				mlf, err := ExtractMinerLockedFunds(ec, addr, ts)
 				if err != nil {
-					log.Error(err)
+					log.Println(err)
 				} else {
 					minerfundslist = append(minerfundslist, *mlf)
 				}
