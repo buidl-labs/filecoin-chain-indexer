@@ -195,11 +195,16 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 
 			for _, s := range allSectors {
 				smsl := make([]minermodel.MinerSectorInfo, 1)
+				tsPSstr := ""
+				if ts != nil {
+					tsPS := ts.ParentState()
+					tsPSstr = tsPS.String()
+				}
 				smsl = append(smsl, minermodel.MinerSectorInfo{
 					Height:                int64(ts.Height()),
 					MinerID:               addr.String(),
 					SectorID:              uint64(s.SectorNumber),
-					StateRoot:             ts.ParentState().String(),
+					StateRoot:             tsPSstr,
 					SealedCID:             s.SealedCID.String(),
 					ActivationEpoch:       int64(s.Activation),
 					ExpirationEpoch:       int64(s.Expiration),
@@ -353,10 +358,15 @@ func ExtractMinerCurrentDeadlineInfo(ec *MinerStateExtractionContext, addr addre
 		}
 	}
 
+	tsPSstr := ""
+	if ts != nil {
+		tsPS := ts.ParentState()
+		tsPSstr = tsPS.String()
+	}
 	return &minermodel.MinerCurrentDeadlineInfo{
 		Height:        int64(ec.CurrTs.Height()),
 		MinerID:       addr.String(),
-		StateRoot:     ts.ParentState().String(),
+		StateRoot:     tsPSstr,
 		DeadlineIndex: currDeadlineInfo.Index,
 		PeriodStart:   int64(currDeadlineInfo.PeriodStart),
 		Open:          int64(currDeadlineInfo.Open),
@@ -380,10 +390,15 @@ func ExtractMinerLockedFunds(ec *MinerStateExtractionContext, addr address.Addre
 			return nil, nil
 		}
 	}
+	tsPSstr := ""
+	if ts != nil {
+		tsPS := ts.ParentState()
+		tsPSstr = tsPS.String()
+	}
 	return &minermodel.MinerFund{
 		Height:            int64(ec.CurrTs.Height()),
 		MinerID:           addr.String(),
-		StateRoot:         ts.ParentState().String(),
+		StateRoot:         tsPSstr,
 		LockedFunds:       currLocked.VestingFunds.String(),
 		InitialPledge:     currLocked.InitialPledgeRequirement.String(),
 		PreCommitDeposits: currLocked.PreCommitDeposits.String(),
