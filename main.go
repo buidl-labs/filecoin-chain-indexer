@@ -20,7 +20,7 @@ func walk(cfg config.Config) {
 	// if err != nil {
 	// 	log.Error("services.walk: allEpochsTasks", err)
 	// }
-	currentEpochTasks := []string{"miners", "markets"}
+	currentEpochTasks := []string{"miners"}//, "markets"}
 	err := services.Walk(cfg, currentEpochTasks, 1) // taskType=1
 	if err != nil {
 		log.Error("services.walk: currentEpochTasks", err)

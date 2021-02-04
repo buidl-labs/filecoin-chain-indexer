@@ -76,27 +76,35 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 
 	i := 0
 	// for i, addr := range ads {
-	for i = 0; i < len(ads); i += 50 {
+	for i = 0; i < len(ads); i++ {
 		fmt.Println("lindex", i)
 		jlim := len(ads)
-		if i+50 < jlim {
-			jlim = i + 50
+		if i+1 < jlim {
+			jlim = i + 1
 		}
-		var info miner.MinerInfo
-		var mpower *api.MinerPower
-		var allSectors []*miner.SectorOnChainInfo
-		var activeSectors []*miner.SectorOnChainInfo
-		var fsc uint64
-		var fsa []uint64
+		// var info miner.MinerInfo
+		// var mpower *api.MinerPower
+		// var allSectors []*miner.SectorOnChainInfo
+		// var activeSectors []*miner.SectorOnChainInfo
+		// var fsc uint64
+		// var fsa []uint64
 		var minerinfoslist []minermodel.MinerInfo
 		// var minerinfoslist []interface{}
 		var claimedpowerlist []powermodel.PowerActorClaim
-		var minersectorslist []minermodel.MinerSectorInfo
+		// var minersectorslist []minermodel.MinerSectorInfo
 		var minersectorfaultslist []minermodel.MinerSectorFault
 		var minerdeadlineslist []minermodel.MinerCurrentDeadlineInfo
 		var minerfundslist []minermodel.MinerFund
 		for j := i; j < jlim; j++ {
+			fmt.Println("jindex", j)
 			addr := ads[j]
+
+			var info miner.MinerInfo
+			var mpower *api.MinerPower
+			// var allSectors []*miner.SectorOnChainInfo
+			// var activeSectors []*miner.SectorOnChainInfo
+			var fsc uint64
+			var fsa []uint64
 
 			//*************************
 			// go func(addr address.Address) {
@@ -122,21 +130,23 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 			// 	log.Info("SLMAsk: {minerid:", ask.Miner, "price:", ask.Price, "verifiedP:", ask.VerifiedPrice, "minPS:", ask.MinPieceSize, "maxPS:", ask.MaxPieceSize, "timestamp:", ask.Timestamp, "Expiry:", ask.Expiry, "}")
 			// }
 
+			var allSectors []*miner.SectorOnChainInfo
+			// var activeSectors []*miner.SectorOnChainInfo
 			allSectors, err = p.node.StateMinerSectors(context.Background(), addr, nil, tsk)
 			if err != nil {
 				log.Error(err)
 			}
-			activeSectors, err = p.node.StateMinerActiveSectors(context.Background(), addr, tsk)
-			if err != nil {
-				log.Error(err)
-			}
+			// activeSectors, err = p.node.StateMinerActiveSectors(context.Background(), addr, tsk)
+			// if err != nil {
+			// 	log.Error(err)
+			// }
 			faultySectors, err := p.node.StateMinerFaults(context.Background(), addr, tsk)
 			if err != nil {
 				log.Error(err)
 			}
 
 			log.Info("SLMallSec count", len(allSectors))
-			log.Info("SLMActSec count", len(activeSectors))
+			// log.Info("SLMActSec count", len(activeSectors))
 			fsc, _ = faultySectors.Count()
 			fsa, _ = faultySectors.All(fsc)
 			log.Info("SLMFaultySec count", fsa)
@@ -184,7 +194,8 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 			})
 
 			for _, s := range allSectors {
-				minersectorslist = append(minersectorslist, minermodel.MinerSectorInfo{
+				smsl := make([]minermodel.MinerSectorInfo, 1)
+				smsl = append(smsl, minermodel.MinerSectorInfo{
 					Height:                int64(ts.Height()),
 					MinerID:               addr.String(),
 					SectorID:              uint64(s.SectorNumber),
@@ -198,6 +209,21 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 					ExpectedDayReward:     s.ExpectedDayReward.String(),
 					ExpectedStoragePledge: s.ExpectedStoragePledge.String(),
 				})
+				p.store.PersistMinerSectors(smsl)
+				// minersectorslist = append(minersectorslist, minermodel.MinerSectorInfo{
+				// 	Height:                int64(ts.Height()),
+				// 	MinerID:               addr.String(),
+				// 	SectorID:              uint64(s.SectorNumber),
+				// 	StateRoot:             ts.ParentState().String(),
+				// 	SealedCID:             s.SealedCID.String(),
+				// 	ActivationEpoch:       int64(s.Activation),
+				// 	ExpirationEpoch:       int64(s.Expiration),
+				// 	DealWeight:            s.DealWeight.String(),
+				// 	VerifiedDealWeight:    s.VerifiedDealWeight.String(),
+				// 	InitialPledge:         s.InitialPledge.String(),
+				// 	ExpectedDayReward:     s.ExpectedDayReward.String(),
+				// 	ExpectedStoragePledge: s.ExpectedStoragePledge.String(),
+				// })
 			}
 			for _, fs := range fsa {
 				minersectorfaultslist = append(minersectorfaultslist, minermodel.MinerSectorFault{
@@ -230,7 +256,7 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 		}
 		p.store.PersistMinerInfos(minerinfoslist)
 		p.store.PersistPowerActorClaims(claimedpowerlist)
-		p.store.PersistMinerSectors(minersectorslist)
+		// p.store.PersistMinerSectors(minersectorslist)
 		p.store.PersistMinerSectorFaults(minersectorfaultslist)
 		p.store.PersistMinerDeadlines(minerdeadlineslist)
 		p.store.PersistMinerFunds(minerfundslist)
