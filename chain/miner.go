@@ -130,23 +130,23 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 			// 	log.Info("SLMAsk: {minerid:", ask.Miner, "price:", ask.Price, "verifiedP:", ask.VerifiedPrice, "minPS:", ask.MinPieceSize, "maxPS:", ask.MaxPieceSize, "timestamp:", ask.Timestamp, "Expiry:", ask.Expiry, "}")
 			// }
 
-			var allSectors []*miner.SectorOnChainInfo
-			// var activeSectors []*miner.SectorOnChainInfo
-			allSectors, err = p.node.StateMinerSectors(context.Background(), addr, nil, tsk)
-			if err != nil {
-				log.Println(err)
-			}
-			// activeSectors, err = p.node.StateMinerActiveSectors(context.Background(), addr, tsk)
+			// var allSectors []*miner.SectorOnChainInfo
+			var activeSectors []*miner.SectorOnChainInfo
+			// allSectors, err = p.node.StateMinerSectors(context.Background(), addr, nil, tsk)
 			// if err != nil {
 			// 	log.Println(err)
 			// }
+			activeSectors, err = p.node.StateMinerActiveSectors(context.Background(), addr, tsk)
+			if err != nil {
+				log.Println(err)
+			}
 			faultySectors, err := p.node.StateMinerFaults(context.Background(), addr, tsk)
 			if err != nil {
 				log.Println(err)
 			}
 
-			log.Info("SLMallSec count", len(allSectors))
-			// log.Info("SLMActSec count", len(activeSectors))
+			// log.Info("SLMallSec count", len(allSectors))
+			log.Info("SLMActSec count", len(activeSectors))
 			fsc, _ = faultySectors.Count()
 			fsa, _ = faultySectors.All(fsc)
 			log.Info("SLMFaultySec count", fsa)
@@ -193,7 +193,7 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 				QualityAdjPower: qap,
 			})
 
-			for _, s := range allSectors {
+			for _, s := range activeSectors {
 				smsl := make([]minermodel.MinerSectorInfo, 1)
 				tsPSstr := ""
 				if ts != nil {
