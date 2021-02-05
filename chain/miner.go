@@ -67,6 +67,14 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 	// var minersectorfaultslist []minermodel.MinerSectorFault
 	// var minerdeadlineslist []minermodel.MinerCurrentDeadlineInfo
 	// var minerfundslist []minermodel.MinerFund
+
+	var minerinfoslist []*minermodel.MinerInfo
+		// var minerinfoslist []interface{}
+		var claimedpowerlist []*powermodel.PowerActorClaim
+		// var minersectorslist []minermodel.MinerSectorInfo
+		var minersectorfaultslist []*minermodel.MinerSectorFault
+		var minerdeadlineslist []*minermodel.MinerCurrentDeadlineInfo
+		var minerfundslist []*minermodel.MinerFund
 	log.Info("SLM addresses", len(addresses))
 	ads := addresses //[:10]
 	log.Info("SLM SLICE", len(ads), ads)
@@ -74,30 +82,35 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 	// var wg sync.WaitGroup
 	// wg.Add(len(addresses))
 
-	i := 0
-	// for i, addr := range ads {
-	for i = 0; i < len(ads); i++ {
+	// i := 0
+	for i, addr := range ads {
+	// for i = 0; i < len(ads); i++ {
 		fmt.Println("lindex", i)
-		jlim := len(ads)
-		if i+1 < jlim {
-			jlim = i + 1
-		}
+		// jlim := len(ads)
+		// if i+1 < jlim {
+		// 	jlim = i + 1
+		// }
+
 		// var info miner.MinerInfo
 		// var mpower *api.MinerPower
 		// var allSectors []*miner.SectorOnChainInfo
 		// var activeSectors []*miner.SectorOnChainInfo
 		// var fsc uint64
 		// var fsa []uint64
-		var minerinfoslist []*minermodel.MinerInfo
-		// var minerinfoslist []interface{}
-		var claimedpowerlist []*powermodel.PowerActorClaim
-		// var minersectorslist []minermodel.MinerSectorInfo
-		var minersectorfaultslist []*minermodel.MinerSectorFault
-		var minerdeadlineslist []*minermodel.MinerCurrentDeadlineInfo
-		var minerfundslist []*minermodel.MinerFund
-		for j := i; j < jlim; j++ {
-			fmt.Println("jindex", j)
-			addr := ads[j]
+
+
+		// var minerinfoslist []*minermodel.MinerInfo
+		// // var minerinfoslist []interface{}
+		// var claimedpowerlist []*powermodel.PowerActorClaim
+		// // var minersectorslist []minermodel.MinerSectorInfo
+		// var minersectorfaultslist []*minermodel.MinerSectorFault
+		// var minerdeadlineslist []*minermodel.MinerCurrentDeadlineInfo
+		// var minerfundslist []*minermodel.MinerFund
+
+
+		// for j := i; j < jlim; j++ {
+		// 	fmt.Println("jindex", j)
+		// 	addr := ads[j]
 
 			var info miner.MinerInfo
 			var mpower *api.MinerPower
@@ -260,23 +273,23 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 
 			// wg.Done()
 			// }(addr)
-		}
-		p.store.PersistMinerInfos(minerinfoslist)
-		p.store.PersistPowerActorClaims(claimedpowerlist)
-		// p.store.PersistMinerSectors(minersectorslist)
-		p.store.PersistMinerSectorFaults(minersectorfaultslist)
-		p.store.PersistMinerDeadlines(minerdeadlineslist)
-		p.store.PersistMinerFunds(minerfundslist)
+		// }
+		// p.store.PersistMinerInfos(minerinfoslist)
+		// p.store.PersistPowerActorClaims(claimedpowerlist)
+		// // p.store.PersistMinerSectors(minersectorslist)
+		// p.store.PersistMinerSectorFaults(minersectorfaultslist)
+		// p.store.PersistMinerDeadlines(minerdeadlineslist)
+		// p.store.PersistMinerFunds(minerfundslist)
 	}
 	// }
 	// wg.Wait()
 	// ***********
-	// p.store.PersistMinerInfos(minerinfoslist)
-	// p.store.PersistPowerActorClaims(claimedpowerlist)
+	p.store.PersistMinerInfos(minerinfoslist)
+	p.store.PersistPowerActorClaims(claimedpowerlist)
 	// p.store.PersistMinerSectors(minersectorslist)
-	// p.store.PersistMinerSectorFaults(minersectorfaultslist)
-	// p.store.PersistMinerDeadlines(minerdeadlineslist)
-	// p.store.PersistMinerFunds(minerfundslist)
+	p.store.PersistMinerSectorFaults(minersectorfaultslist)
+	p.store.PersistMinerDeadlines(minerdeadlineslist)
+	p.store.PersistMinerFunds(minerfundslist)
 
 	// p.store.PersistBatch(minerinfoslist, "miner_info")
 	// p.store.PersistBatch(minersectorslist, "miner_sector_info")
