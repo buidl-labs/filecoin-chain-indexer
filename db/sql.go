@@ -178,7 +178,7 @@ func (s *Store) PersistBlockHeaders(bhs []blocksmodel.BlockHeader) error {
 	return nil
 }
 
-func (s *Store) PersistMinerInfos(mis []minermodel.MinerInfo) error {
+func (s *Store) PersistMinerInfos(mis []*minermodel.MinerInfo) error {
 	if len(mis) == 0 {
 		log.Info("no minerinfos")
 		return nil
@@ -218,7 +218,7 @@ func (s *Store) PersistMinerInfos(mis []minermodel.MinerInfo) error {
 	return nil
 }
 
-func (s *Store) PersistMinerFunds(mfs []minermodel.MinerFund) error {
+func (s *Store) PersistMinerFunds(mfs []*minermodel.MinerFund) error {
 	if len(mfs) == 0 {
 		log.Info("no minerfunds")
 		return nil
@@ -255,7 +255,7 @@ func (s *Store) PersistMinerFunds(mfs []minermodel.MinerFund) error {
 	return nil
 }
 
-func (s *Store) PersistMinerDeadlines(mds []minermodel.MinerCurrentDeadlineInfo) error {
+func (s *Store) PersistMinerDeadlines(mds []*minermodel.MinerCurrentDeadlineInfo) error {
 	if len(mds) == 0 {
 		log.Info("no minerdeadlines")
 		return nil
@@ -333,7 +333,7 @@ func (s *Store) PersistMinerQuality(mqs []minermodel.MinerQuality) error {
 	return nil
 }
 
-func (s *Store) PersistPowerActorClaims(pacs []powermodel.PowerActorClaim) error {
+func (s *Store) PersistPowerActorClaims(pacs []*powermodel.PowerActorClaim) error {
 	if len(pacs) == 0 {
 		log.Info("no pacs")
 		return nil
@@ -422,7 +422,7 @@ func (s *Store) PersistMinerSectorPosts(msps []minermodel.MinerSectorPost) error
 	return nil
 }
 
-func (s *Store) PersistMinerSectorFaults(msfs []minermodel.MinerSectorFault) error {
+func (s *Store) PersistMinerSectorFaults(msfs []*minermodel.MinerSectorFault) error {
 	if len(msfs) == 0 {
 		log.Info("no msfaults")
 		return nil

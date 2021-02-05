@@ -88,13 +88,13 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 		// var activeSectors []*miner.SectorOnChainInfo
 		// var fsc uint64
 		// var fsa []uint64
-		var minerinfoslist []minermodel.MinerInfo
+		var minerinfoslist []*minermodel.MinerInfo
 		// var minerinfoslist []interface{}
-		var claimedpowerlist []powermodel.PowerActorClaim
+		var claimedpowerlist []*powermodel.PowerActorClaim
 		// var minersectorslist []minermodel.MinerSectorInfo
-		var minersectorfaultslist []minermodel.MinerSectorFault
-		var minerdeadlineslist []minermodel.MinerCurrentDeadlineInfo
-		var minerfundslist []minermodel.MinerFund
+		var minersectorfaultslist []*minermodel.MinerSectorFault
+		var minerdeadlineslist []*minermodel.MinerCurrentDeadlineInfo
+		var minerfundslist []*minermodel.MinerFund
 		for j := i; j < jlim; j++ {
 			fmt.Println("jindex", j)
 			addr := ads[j]
@@ -165,7 +165,7 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 			// 	workerID = info.Worker.String()
 			// }
 			workerID = info.Worker.String()
-			minerinfoslist = append(minerinfoslist, minermodel.MinerInfo{
+			minerinfoslist = append(minerinfoslist, &minermodel.MinerInfo{
 				MinerID:         addr.String(),
 				Address:         "",
 				PeerID:          peerID,
@@ -185,7 +185,7 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 			if &mpower.MinerPower.QualityAdjPower != nil {
 				qap = mpower.MinerPower.QualityAdjPower.String()
 			}
-			claimedpowerlist = append(claimedpowerlist, powermodel.PowerActorClaim{
+			claimedpowerlist = append(claimedpowerlist, &powermodel.PowerActorClaim{
 				MinerID:         addr.String(),
 				Height:          int64(ts.Height()),
 				StateRoot:       "",
@@ -194,46 +194,46 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 			})
 
 			/*
-			for _, s := range activeSectors {
-				smsl := make([]minermodel.MinerSectorInfo, 1)
-				tsPSstr := ""
-				if ts != nil {
-					tsPS := ts.ParentState()
-					tsPSstr = tsPS.String()
+				for _, s := range activeSectors {
+					smsl := make([]minermodel.MinerSectorInfo, 1)
+					tsPSstr := ""
+					if ts != nil {
+						tsPS := ts.ParentState()
+						tsPSstr = tsPS.String()
+					}
+					smsl = append(smsl, minermodel.MinerSectorInfo{
+						Height:                int64(ts.Height()),
+						MinerID:               addr.String(),
+						SectorID:              uint64(s.SectorNumber),
+						StateRoot:             tsPSstr,
+						SealedCID:             s.SealedCID.String(),
+						ActivationEpoch:       int64(s.Activation),
+						ExpirationEpoch:       int64(s.Expiration),
+						DealWeight:            s.DealWeight.String(),
+						VerifiedDealWeight:    s.VerifiedDealWeight.String(),
+						InitialPledge:         s.InitialPledge.String(),
+						ExpectedDayReward:     s.ExpectedDayReward.String(),
+						ExpectedStoragePledge: s.ExpectedStoragePledge.String(),
+					})
+					p.store.PersistMinerSectors(smsl)
+					// minersectorslist = append(minersectorslist, minermodel.MinerSectorInfo{
+					// 	Height:                int64(ts.Height()),
+					// 	MinerID:               addr.String(),
+					// 	SectorID:              uint64(s.SectorNumber),
+					// 	StateRoot:             ts.ParentState().String(),
+					// 	SealedCID:             s.SealedCID.String(),
+					// 	ActivationEpoch:       int64(s.Activation),
+					// 	ExpirationEpoch:       int64(s.Expiration),
+					// 	DealWeight:            s.DealWeight.String(),
+					// 	VerifiedDealWeight:    s.VerifiedDealWeight.String(),
+					// 	InitialPledge:         s.InitialPledge.String(),
+					// 	ExpectedDayReward:     s.ExpectedDayReward.String(),
+					// 	ExpectedStoragePledge: s.ExpectedStoragePledge.String(),
+					// })
 				}
-				smsl = append(smsl, minermodel.MinerSectorInfo{
-					Height:                int64(ts.Height()),
-					MinerID:               addr.String(),
-					SectorID:              uint64(s.SectorNumber),
-					StateRoot:             tsPSstr,
-					SealedCID:             s.SealedCID.String(),
-					ActivationEpoch:       int64(s.Activation),
-					ExpirationEpoch:       int64(s.Expiration),
-					DealWeight:            s.DealWeight.String(),
-					VerifiedDealWeight:    s.VerifiedDealWeight.String(),
-					InitialPledge:         s.InitialPledge.String(),
-					ExpectedDayReward:     s.ExpectedDayReward.String(),
-					ExpectedStoragePledge: s.ExpectedStoragePledge.String(),
-				})
-				p.store.PersistMinerSectors(smsl)
-				// minersectorslist = append(minersectorslist, minermodel.MinerSectorInfo{
-				// 	Height:                int64(ts.Height()),
-				// 	MinerID:               addr.String(),
-				// 	SectorID:              uint64(s.SectorNumber),
-				// 	StateRoot:             ts.ParentState().String(),
-				// 	SealedCID:             s.SealedCID.String(),
-				// 	ActivationEpoch:       int64(s.Activation),
-				// 	ExpirationEpoch:       int64(s.Expiration),
-				// 	DealWeight:            s.DealWeight.String(),
-				// 	VerifiedDealWeight:    s.VerifiedDealWeight.String(),
-				// 	InitialPledge:         s.InitialPledge.String(),
-				// 	ExpectedDayReward:     s.ExpectedDayReward.String(),
-				// 	ExpectedStoragePledge: s.ExpectedStoragePledge.String(),
-				// })
-			}
 			*/
 			for _, fs := range fsa {
-				minersectorfaultslist = append(minersectorfaultslist, minermodel.MinerSectorFault{
+				minersectorfaultslist = append(minersectorfaultslist, &minermodel.MinerSectorFault{
 					Height:   int64(ts.Height()),
 					MinerID:  addr.String(),
 					SectorID: fs,
@@ -248,13 +248,13 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 				if err != nil {
 					log.Println(err)
 				} else {
-					minerdeadlineslist = append(minerdeadlineslist, *mcdi)
+					minerdeadlineslist = append(minerdeadlineslist, mcdi)
 				}
 				mlf, err := ExtractMinerLockedFunds(ec, addr, ts)
 				if err != nil {
 					log.Println(err)
 				} else {
-					minerfundslist = append(minerfundslist, *mlf)
+					minerfundslist = append(minerfundslist, mlf)
 				}
 			}
 
