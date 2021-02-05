@@ -131,22 +131,22 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 			// }
 
 			// var allSectors []*miner.SectorOnChainInfo
-			var activeSectors []*miner.SectorOnChainInfo
+			// var activeSectors []*miner.SectorOnChainInfo
 			// allSectors, err = p.node.StateMinerSectors(context.Background(), addr, nil, tsk)
 			// if err != nil {
 			// 	log.Println(err)
 			// }
-			activeSectors, err = p.node.StateMinerActiveSectors(context.Background(), addr, tsk)
-			if err != nil {
-				log.Println(err)
-			}
+			// activeSectors, err = p.node.StateMinerActiveSectors(context.Background(), addr, tsk)
+			// if err != nil {
+			// 	log.Println(err)
+			// }
 			faultySectors, err := p.node.StateMinerFaults(context.Background(), addr, tsk)
 			if err != nil {
 				log.Println(err)
 			}
 
 			// log.Info("SLMallSec count", len(allSectors))
-			log.Info("SLMActSec count", len(activeSectors))
+			// log.Info("SLMActSec count", len(activeSectors))
 			fsc, _ = faultySectors.Count()
 			fsa, _ = faultySectors.All(fsc)
 			log.Info("SLMFaultySec count", fsa)
@@ -193,6 +193,7 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 				QualityAdjPower: qap,
 			})
 
+			/*
 			for _, s := range activeSectors {
 				smsl := make([]minermodel.MinerSectorInfo, 1)
 				tsPSstr := ""
@@ -230,6 +231,7 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 				// 	ExpectedStoragePledge: s.ExpectedStoragePledge.String(),
 				// })
 			}
+			*/
 			for _, fs := range fsa {
 				minersectorfaultslist = append(minersectorfaultslist, minermodel.MinerSectorFault{
 					Height:   int64(ts.Height()),
