@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	// pq postgresql driver
+	"github.com/go-pg/pg/v10"
 	_ "github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 
@@ -18,6 +19,7 @@ import (
 
 type Store struct {
 	db *sql.DB
+	DB *pg.DB
 }
 
 func New(connStr string) (*Store, error) {
@@ -27,8 +29,16 @@ func New(connStr string) (*Store, error) {
 		return nil, err
 	}
 
+	opt, err := pg.ParseURL(connStr)
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+	pgdb := pg.Connect(opt)
+
 	return &Store{
 		db: db,
+		DB: pgdb,
 	}, nil
 }
 
@@ -41,6 +51,10 @@ func (s *Store) Conn() (*sql.DB, error) {
 func (s *Store) Close() error {
 	conn := s.db
 	return conn.Close()
+}
+
+func (s *Store) CloseGoPg() error {
+	return s.DB.Close()
 }
 
 func (s *Store) PersistBatch(m []interface{}, modelName string) error {
@@ -367,7 +381,7 @@ func (s *Store) PersistPowerActorClaims(pacs []*powermodel.PowerActorClaim) erro
 	return nil
 }
 
-func (s *Store) PersistMinerSectors(msis []minermodel.MinerSectorInfo) error {
+func (s *Store) PersistMinerSectors(msis []*minermodel.MinerSectorInfo) error {
 	if len(msis) == 0 {
 		log.Info("no minersectorinfos")
 		return nil
@@ -398,10 +412,12 @@ func (s *Store) PersistMinerSectors(msis []minermodel.MinerSectorInfo) error {
 		c += cols
 	}
 	query = query[0 : len(query)-1]
+	log.Info("Query", query)
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
 		log.Println("prep minersectorinfos", err)
 	}
+	log.Info("VARGS", valueArgs)
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
 		log.Println("insert minersectorinfos", err)

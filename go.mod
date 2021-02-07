@@ -23,6 +23,7 @@ require (
 	github.com/filecoin-project/specs-actors/v2 v2.3.4
 	github.com/gbrlsnchs/jwt/v3 v3.0.0 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
+	github.com/go-pg/pg/v10 v10.7.5
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
@@ -45,7 +46,7 @@ require (
 	github.com/urfave/cli/v2 v2.3.0 // indirect
 	github.com/whyrusleeping/cbor-gen v0.0.0-20210118024343-169e9d70c0c2
 	go.opencensus.io v0.22.6 // indirect
-	go.opentelemetry.io/otel v0.12.0
+	// go.opentelemetry.io/otel v0.16.0
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/mod v0.4.1 // indirect
