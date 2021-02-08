@@ -178,29 +178,35 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 	fmt.Println(actorCodes)
 
 	// Build a lookup of actor codes
-	// actorCodes := map[address.Address]cid.Cid{}
-	// if err := stateTree.ForEach(func(a address.Address, act *types.Actor) error {
-	// 	actorCodes[a] = act.Code
-	// 	fmt.Println("somerr1", err, a, act.Code)
-	// 	return nil
-	// }); err != nil {
-	// 	fmt.Println("somerr2", err)
-	// 	return nil, xerrors.Errorf("iterate actors: %w", err)
-	// }
-	// fmt.Println("aCs", actorCodes)
-	// actorCodesData, err := json.Marshal(actorCodes)
-	// if err != nil {
-	// 	fmt.Println(err.Error())
-	// 	return nil, xerrors.Errorf("json.Marshal: %w", err)
-	// }
-	// jsonStr := string(actorCodesData)
+	/*
+		actorCodes := map[address.Address]cid.Cid{}
+		actorCodesStr := map[string]string{}
+		if err := stateTree.ForEach(func(a address.Address, act *types.Actor) error {
+			actorCodes[a] = act.Code
+			actorCodesStr[a.String()] = act.Code.String()
+			fmt.Println("somerr1", err, a, act.Code)
+			return nil
+		}); err != nil {
+			fmt.Println("somerr2", err)
+			return nil, xerrors.Errorf("iterate actors: %w", err)
+		}
+		actorCodesData, err := json.Marshal(actorCodesStr)
+		if err != nil {
+			fmt.Println(err)
+			return nil, xerrors.Errorf("json.Marshal: %w", err)
+		}
+		jsonStr := string(actorCodesData)
+		fmt.Println("jsonStr", jsonStr)
 
-	// f, _ := os.Create("/tmp/badger/actors.json")
-	// defer f.Close()
-	// w := bufio.NewWriter(f)
-	// n4, _ := w.WriteString(jsonStr)
-	// fmt.Printf("wrote %d bytes\n", n4)
-	// w.Flush()
+		currentTime := time.Now()
+		dt := currentTime.Format("2006-01-02")
+		f, _ := os.Create("/var/data/actorCodes " + dt + ".json")
+		defer f.Close()
+		w := bufio.NewWriter(f)
+		n4, _ := w.WriteString(jsonStr)
+		fmt.Printf("wrote %d bytes\n", n4)
+		w.Flush()
+	*/
 
 	getActorCode := func(a address.Address) cid.Cid {
 		c, ok := actorCodes[a]

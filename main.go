@@ -15,13 +15,13 @@ import (
 )
 
 func walk(cfg config.Config) {
-	// allEpochsTasks := []string{"messages", "blocks"}
-	// err := services.Walk(cfg, allEpochsTasks, 0) // taskType=0
-	// if err != nil {
-	// 	log.Println("services.walk: allEpochsTasks", err)
-	// }
-	currentEpochTasks := []string{"miners"}//, "markets"}
-	err := services.Walk(cfg, currentEpochTasks, 1) // taskType=1
+	allEpochsTasks := []string{"messages", "blocks"}
+	err := services.Walk(cfg, allEpochsTasks, 0) // taskType=0
+	if err != nil {
+		log.Println("services.walk: allEpochsTasks", err)
+	}
+	currentEpochTasks := []string{"miners", "markets"}
+	err = services.Walk(cfg, currentEpochTasks, 1) // taskType=1
 	if err != nil {
 		log.Println("services.walk: currentEpochTasks", err)
 	}
@@ -62,11 +62,14 @@ func main() {
 	case "index":
 		walk(cfg)
 		// minuteTicker := time.NewTicker(60 * time.Second)
-		minuteTicker := time.NewTicker(36 * time.Hour)
+		minuteTicker := time.NewTicker(24 * time.Hour)
+		dayTicker := time.NewTicker(24 * time.Hour)
 		for {
 			select {
 			case <-minuteTicker.C:
 				walk(cfg)
+			case <-dayTicker.C:
+				getDailyData(cfg)
 			}
 		}
 	default:
@@ -80,4 +83,8 @@ func getenvInt(key string) (int, error) {
 		return -1, err
 	}
 	return v, nil
+}
+
+func getDailyData(cfg config.Config) {
+
 }

@@ -36,7 +36,8 @@ func (p *BlockProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 		// pl = append(pl, blocksmodel.NewDrandBlockEntries(bh))
 	}
 
-	p.store.PersistBlockHeaders(blockHeadersResults)
+	// p.store.PersistBlockHeaders(blockHeadersResults)
+	p.store.DB.Model(blockHeadersResults).Insert()
 
 	return pl, nil
 }
