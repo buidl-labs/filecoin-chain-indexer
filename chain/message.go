@@ -192,7 +192,12 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 			GasBurned:          m.GasOutputs.GasBurned,
 			ActorName:          builtin2.ActorNameByCode(m.ToActorCode),
 		}
-		p.store.DB.Model(transaction).Insert()
+		r, err := p.store.DB.Model(transaction).Insert()
+		if err != nil {
+			log.Info("insert txn", err)
+		} else {
+			log.Info("inserted txn", r)
+		}
 		transaction = nil
 		// transactionsResults = append(transactionsResults, transaction)
 
