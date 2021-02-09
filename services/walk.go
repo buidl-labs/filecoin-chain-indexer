@@ -18,6 +18,7 @@ import (
 func Walk(cfg config.Config, tasks []string, taskType int) error {
 	lensOpener, lensCloser, err := lotus.NewAPIOpener(cfg, context.Background())
 	if err != nil {
+		log.Info(tasks, " error: ", err)
 		return xerrors.Errorf("setup lens: %w", err)
 	}
 	fmt.Println("deferlensclose")
@@ -29,12 +30,14 @@ func Walk(cfg config.Config, tasks []string, taskType int) error {
 
 	store, err := db.New(cfg.DBConnStr)
 	if err != nil {
+		log.Info(tasks, " error: ", err)
 		return xerrors.Errorf("setup indexer, connecting db: %w", err)
 	}
 	db0, _ := store.Conn()
 	fmt.Println("gonna open TSIDXR")
 	tsIndexer, err := chain.NewTipSetIndexer(lensOpener, db0, *store, strg, 0, "somename", tasks)
 	if err != nil {
+		log.Info(tasks, " error: ", err)
 		return xerrors.Errorf("setup indexer: %w", err)
 	}
 	defer func() {
@@ -46,12 +49,14 @@ func Walk(cfg config.Config, tasks []string, taskType int) error {
 	ctx := context.Background()
 	node, closer, err := lensOpener.Open(ctx)
 	if err != nil {
+		log.Info(tasks, " error: ", err)
 		return xerrors.Errorf("open lens: %w", err)
 	}
 	defer closer()
 
 	ts, err := node.ChainHead(ctx)
 	if err != nil {
+		log.Info(tasks, " error: ", err)
 		return xerrors.Errorf("get chain head: %w", err)
 	}
 	from := int64(453935)
@@ -69,12 +74,14 @@ func Walk(cfg config.Config, tasks []string, taskType int) error {
 	// height := dataservice.GetParsedTill()
 	minHeight := from //453935) // setting a dummy value here
 	// minHeight := maxHeight - 2
+	log.Info("FROMM", minHeight, maxHeight)
 
 	// walker := chain.NewWalker(&apistruct.FullNodeStruct{}, tsIndexer, 10, 1000)
 	walker := chain.NewWalker(lensOpener, tsIndexer, tasks, taskType, minHeight, maxHeight)
 	// walker := chain.NewWalker(lensOpener, tsIndexer, 10195, 10200)
 	err = walker.Run(context.Background())
 	if err != nil {
+		log.Info(tasks, " error: ", err)
 		return err
 	}
 	return nil

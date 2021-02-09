@@ -15,16 +15,25 @@ import (
 )
 
 func walk(cfg config.Config) {
-	allEpochsTasks := []string{"messages", "blocks"}
-	err := services.Walk(cfg, allEpochsTasks, 0) // taskType=0
-	if err != nil {
-		log.Println("services.walk: allEpochsTasks", err)
-	}
-	currentEpochTasks := []string{"miners", "markets"}
-	err = services.Walk(cfg, currentEpochTasks, 1) // taskType=1
-	if err != nil {
-		log.Println("services.walk: currentEpochTasks", err)
-	}
+	// allEpochsTasks := []string{"messages", "blocks"}
+	// err := services.Walk(cfg, allEpochsTasks, 0) // taskType=0
+	// if err != nil {
+	// 	log.Println("services.walk: allEpochsTasks", err)
+	// }
+	// currentEpochTasks := []string{"miners", "markets"}
+	// err = services.Walk(cfg, currentEpochTasks, 1) // taskType=1
+	// if err != nil {
+	// 	log.Println("services.walk: currentEpochTasks", err)
+	// }
+
+	msg := []string{"messages"}
+	blk := []string{"blocks"}
+	minr := []string{"miners"}
+	mkt := []string{"markets"}
+	go services.Walk(cfg, msg, 0)  // taskType=0
+	go services.Walk(cfg, blk, 0)  // taskType=0
+	go services.Walk(cfg, minr, 1) // taskType=1
+	go services.Walk(cfg, mkt, 1)  // taskType=1
 
 	log.Info("\n\n\nDONE ONE ROUND\n\n\n")
 }

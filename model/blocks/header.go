@@ -22,8 +22,8 @@ type BlockHeader struct {
 	ForkSignaling uint64 `pg:",use_zero"`
 }
 
-func NewBlockHeader(bh *types.BlockHeader) BlockHeader {
-	return BlockHeader{
+func NewBlockHeader(bh *types.BlockHeader) *BlockHeader {
+	return &BlockHeader{
 		Cid:             bh.Cid().String(),
 		MinerID:         bh.Miner.String(),
 		ParentWeight:    bh.ParentWeight.String(),
