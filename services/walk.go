@@ -61,13 +61,15 @@ func Walk(cfg config.Config, tasks []string, taskType int) error {
 	}
 	from := int64(453935)
 	to := int64(453945)
+	from = int64(0)
+	to = int64(ts.Height()) - 900
 	if cfg.From != int64(-1) && cfg.To != int64(-1) {
 		from = cfg.From
 		to = cfg.To
 	}
 
-	maxHeight := int64(ts.Height()) - 900 // head - finality
-	maxHeight = to                        //453937)
+	maxHeight := to // head - finality
+	// maxHeight = to                        //453937)
 	log.Info("maxHeight", maxHeight)
 
 	// TODO: start indexing from a certain height

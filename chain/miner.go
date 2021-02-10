@@ -96,16 +96,12 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 			log.Println(err)
 		}
 
-		askPrice := make(chan string, 1)
-		go func() {
-			ask, err := p.node.ClientQueryAsk(context.Background(), *info.PeerId, addr)
-			if err != nil {
-				log.Info("SLMCLientqueryask", err)
-			} else {
-				askPrice <- ask.Price.String()
-				log.Info("SLMAsk: {minerid:", ask.Miner, "price:", ask.Price, "verifiedP:", ask.VerifiedPrice, "minPS:", ask.MinPieceSize, "maxPS:", ask.MaxPieceSize, "timestamp:", ask.Timestamp, "Expiry:", ask.Expiry, "}")
-			}
-		}()
+		// ask, err := p.node.ClientQueryAsk(context.Background(), *info.PeerId, addr)
+		// if err != nil {
+		// 	log.Info("SLMCLientqueryask", err)
+		// } else {
+		// 	log.Info("SLMAsk: {minerid:", ask.Miner, "price:", ask.Price, "verifiedP:", ask.VerifiedPrice, "minPS:", ask.MinPieceSize, "maxPS:", ask.MaxPieceSize, "timestamp:", ask.Timestamp, "Expiry:", ask.Expiry, "}")
+		// }
 
 		// allSectors, err = p.node.StateMinerSectors(context.Background(), addr, nil, tsk)
 		// if err != nil {
