@@ -31,7 +31,9 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-cid v0.0.7
-	github.com/ipld/go-ipld-prime v0.7.0 // indirect
+	github.com/ipfs/go-ipld-cbor v0.0.5
+	github.com/ipfs/go-log/v2 v2.1.2-0.20200626104915-0016c0b4b3e4
+	github.com/ipld/go-ipld-prime v0.5.1-0.20201021195245-109253e8a018
 	github.com/lib/pq v1.9.0
 	github.com/libp2p/go-libp2p-core v0.8.0
 	github.com/magefile/mage v1.11.0 // indirect

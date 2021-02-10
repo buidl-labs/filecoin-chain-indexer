@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"strconv"
+	"time"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	log "github.com/sirupsen/logrus"
@@ -44,12 +45,15 @@ func (p *MarketProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (
 	// var pl model.PersistableList
 
 	tsk := ts.Key()
+	initt := time.Now()
+	log.Info("initial: ", initt)
 	log.Info("markettsk", tsk)
 	dealStates, err := p.node.StateMarketDeals(context.Background(), tsk)
 	if err != nil {
 		log.Println("SMD", err)
 		return nil, err
 	}
+	log.Info("final: ", time.Now())
 	log.Info("marketDS", dealStates)
 
 	// var marketdealproposalslist []marketmodel.MarketDealProposal

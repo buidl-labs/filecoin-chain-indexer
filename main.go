@@ -26,14 +26,19 @@ func walk(cfg config.Config) {
 	// 	log.Println("services.walk: currentEpochTasks", err)
 	// }
 
+	// initial := []string{"init"}
 	msg := []string{"messages"}
 	blk := []string{"blocks"}
 	minr := []string{"miners"}
 	mkt := []string{"markets"}
+	// err := services.Walk(cfg, initial, 1)
+	// if err != nil {
+	// 	log.Println("init task", err)
+	// }
 	go services.Walk(cfg, msg, 0)  // taskType=0
 	go services.Walk(cfg, blk, 0)  // taskType=0
 	go services.Walk(cfg, minr, 1) // taskType=1
-	go services.Walk(cfg, mkt, 1)  // taskType=1
+	go services.Walk(cfg, mkt, 1) // taskType=1
 
 	log.Info("\n\n\nDONE ONE ROUND\n\n\n")
 }
