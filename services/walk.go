@@ -12,6 +12,8 @@ import (
 	"github.com/buidl-labs/filecoin-chain-indexer/db"
 	"github.com/buidl-labs/filecoin-chain-indexer/lens/lotus"
 	"github.com/buidl-labs/filecoin-chain-indexer/model"
+	blocksmodel "github.com/buidl-labs/filecoin-chain-indexer/model/blocks"
+	messagemodel "github.com/buidl-labs/filecoin-chain-indexer/model/messages"
 	"github.com/buidl-labs/filecoin-chain-indexer/storage"
 )
 
@@ -76,6 +78,26 @@ func Walk(cfg config.Config, tasks []string, taskType int) error {
 	// height := dataservice.GetParsedTill()
 	minHeight := from //453935) // setting a dummy value here
 	// minHeight := maxHeight - 2
+
+	if tasks[0] == "messages" {
+		var txnsParsedTill int
+		txn := new(messagemodel.Transaction)
+		err := store.DB.Model(txn).ColumnExpr("max(height)").Select(&txnsParsedTill)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("txnsParsedTill ", txnsParsedTill)
+		minHeight = int64(txnsParsedTill)
+	} else if tasks[0] == "blocks"{
+		var txnsParsedTill int
+		bhr := new(blocksmodel.BlockHeader)
+		err := store.DB.Model(bhr).ColumnExpr("max(height)").Select(&txnsParsedTill)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("txnsParsedTill ", txnsParsedTill)
+		minHeight = int64(txnsParsedTill)
+	}
 	log.Info("FROMM", minHeight, maxHeight)
 
 	// walker := chain.NewWalker(&apistruct.FullNodeStruct{}, tsIndexer, 10, 1000)

@@ -181,6 +181,17 @@ CREATE TABLE miner_sector_faults
     "sector_id" BIGINT NOT NULL
 );
 
+CREATE TABLE market_deal_states
+(
+    deal_id BIGINT NOT NULL,
+    state_root TEXT NOT NULL,
+    sector_start_epoch BIGINT NOT NULL,
+    last_update_epoch BIGINT NOT NULL,
+    slash_epoch BIGINT NOT NULL,
+    height BIGINT NOT NULL,
+    PRIMARY KEY ("deal_id")
+);
+
 CREATE TABLE market_deal_proposals
 (
     deal_id BIGINT NOT NULL,
@@ -199,7 +210,7 @@ CREATE TABLE market_deal_proposals
     client_collateral TEXT NOT NULL,
     label TEXT,
     height BIGINT NOT NULL,
-    PRIMARY KEY ("height", "deal_id")
+    PRIMARY KEY ("deal_id")
 );
 
 CREATE TABLE chain_economics

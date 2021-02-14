@@ -29,7 +29,7 @@ func walk(cfg config.Config) {
 	// initial := []string{"init"}
 	msg := []string{"messages"}
 	blk := []string{"blocks"}
-	minr := []string{"miners"}
+	// minr := []string{"miners"}
 	mkt := []string{"markets"}
 	// err := services.Walk(cfg, initial, 1)
 	// if err != nil {
@@ -37,7 +37,7 @@ func walk(cfg config.Config) {
 	// }
 	go services.Walk(cfg, msg, 0)  // taskType=0
 	go services.Walk(cfg, blk, 0)  // taskType=0
-	go services.Walk(cfg, minr, 1) // taskType=1
+	// go services.Walk(cfg, minr, 1) // taskType=1
 	go services.Walk(cfg, mkt, 1) // taskType=1
 
 	log.Info("\n\n\nDONE ONE ROUND\n\n\n")
@@ -86,6 +86,9 @@ func main() {
 				getDailyData(cfg)
 			}
 		}
+	case "minerinit":
+		minr := []string{"miners"}
+		services.Walk(cfg, minr, 1)
 	default:
 		log.Fatal("Please use a valid command")
 	}

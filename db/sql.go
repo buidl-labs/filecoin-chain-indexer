@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
-	// pq postgresql driver
 	"github.com/go-pg/pg/v10"
+	// pq postgresql driver
 	_ "github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 

@@ -8,7 +8,7 @@ import (
 
 type MarketDealState struct {
 	tableName        struct{} `pg:"market_deal_states"` // nolint: structcheck,unused
-	Height           int64    `pg:",pk,notnull,use_zero"`
+	Height           int64    `pg:",notnull,use_zero"`
 	DealID           uint64   `pg:",pk,use_zero"`
 	SectorStartEpoch int64    `pg:",pk,use_zero"`
 	LastUpdateEpoch  int64    `pg:",pk,use_zero"`

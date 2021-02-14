@@ -3,8 +3,10 @@ package chain
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -96,7 +98,25 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 			log.Println(err)
 		}
 
-		// ask, err := p.node.ClientQueryAsk(context.Background(), *info.PeerId, addr)
+		c1 := make(chan *storagemarket.StorageAsk, 1)
+
+		if info.PeerId != nil {
+			go func() {
+				fmt.Println("infom", info)
+				ask, _ := GetClientAsk(p, info, addr)
+				c1 <- ask
+			}()
+
+			select {
+			case ask := <-c1:
+				fmt.Println(ask)
+				log.Info("SLMAsk: {minerid:", ask.Miner, "price:", ask.Price, "verifiedP:", ask.VerifiedPrice, "minPS:", ask.MinPieceSize, "maxPS:", ask.MaxPieceSize, "timestamp:", ask.Timestamp, "Expiry:", ask.Expiry, "}")
+			case <-time.After(1 * time.Second): // set a higher value
+				fmt.Println("Clientqueryask out of time :(")
+			}
+		}
+
+		// ask, err := GetClientAsk(p, info, addr)
 		// if err != nil {
 		// 	log.Info("SLMCLientqueryask", err)
 		// } else {
@@ -465,4 +485,12 @@ func ExtractMinerLockedFunds(ec *MinerStateExtractionContext, addr address.Addre
 		PreCommitDeposits: currLocked.PreCommitDeposits.String(),
 		AvailableBalance:  "0",
 	}, nil
+}
+
+func GetClientAsk(p *MinerProcessor, info miner.MinerInfo, addr address.Address) (*storagemarket.StorageAsk, error) {
+	ask, err := p.node.ClientQueryAsk(context.Background(), *info.PeerId, addr)
+	if err != nil {
+		return ask, err
+	}
+	return ask, nil
 }
