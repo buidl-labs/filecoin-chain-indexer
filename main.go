@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"strconv"
 	"time"
@@ -13,21 +15,38 @@ import (
 )
 
 func walk(cfg config.Config) {
-	allEpochsTasks := []string{"messages", "blocks"}
-	err := services.Walk(cfg, allEpochsTasks, 0) // taskType=0
-	if err != nil {
-		log.Error("services.walk: allEpochsTasks", err)
-	}
-	currentEpochTasks := []string{"miners", "markets"}
-	err = services.Walk(cfg, currentEpochTasks, 1) // taskType=1
-	if err != nil {
-		log.Error("services.walk: currentEpochTasks", err)
-	}
+	// allEpochsTasks := []string{"messages", "blocks"}
+	// err := services.Walk(cfg, allEpochsTasks, 0) // taskType=0
+	// if err != nil {
+	// 	log.Println("services.walk: allEpochsTasks", err)
+	// }
+	// currentEpochTasks := []string{"miners", "markets"}
+	// err = services.Walk(cfg, currentEpochTasks, 1) // taskType=1
+	// if err != nil {
+	// 	log.Println("services.walk: currentEpochTasks", err)
+	// }
+
+	// initial := []string{"init"}
+	msg := []string{"messages"}
+	blk := []string{"blocks"}
+	// minr := []string{"miners"}
+	mkt := []string{"markets"}
+	// err := services.Walk(cfg, initial, 1)
+	// if err != nil {
+	// 	log.Println("init task", err)
+	// }
+	go services.Walk(cfg, msg, 0)  // taskType=0
+	go services.Walk(cfg, blk, 0)  // taskType=0
+	// go services.Walk(cfg, minr, 1) // taskType=1
+	go services.Walk(cfg, mkt, 1) // taskType=1
 
 	log.Info("\n\n\nDONE ONE ROUND\n\n\n")
 }
 
 func main() {
+	go func() {
+		log.Info(http.ListenAndServe("localhost:6060", nil))
+	}()
 	from, _ := getenvInt("FROM")
 	to, _ := getenvInt("TO")
 
@@ -57,13 +76,19 @@ func main() {
 	case "index":
 		walk(cfg)
 		// minuteTicker := time.NewTicker(60 * time.Second)
-		minuteTicker := time.NewTicker(36 * time.Hour)
+		minuteTicker := time.NewTicker(24 * time.Hour)
+		dayTicker := time.NewTicker(24 * time.Hour)
 		for {
 			select {
 			case <-minuteTicker.C:
 				walk(cfg)
+			case <-dayTicker.C:
+				getDailyData(cfg)
 			}
 		}
+	case "minerinit":
+		minr := []string{"miners"}
+		services.Walk(cfg, minr, 1)
 	default:
 		log.Fatal("Please use a valid command")
 	}
@@ -75,4 +100,8 @@ func getenvInt(key string) (int, error) {
 		return -1, err
 	}
 	return v, nil
+}
+
+func getDailyData(cfg config.Config) {
+
 }

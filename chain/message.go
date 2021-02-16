@@ -72,8 +72,8 @@ func (p *MessageProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) 
 		}
 	}
 
-	log.Info("MTXNS", txns)
-	p.store.PersistTransactions(txns)
+	// log.Info("MTXNS", txns)
+	// p.store.PersistTransactions(txns)
 
 	return data, err
 }
@@ -86,12 +86,12 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 	}
 
 	var (
-		messageResults      = make(messagemodel.Messages, 0, len(emsgs))
-		receiptResults      = make(messagemodel.Receipts, 0, len(emsgs))
-		blockMessageResults = make(messagemodel.BlockMessages, 0, len(emsgs))
+		// messageResults      = make(messagemodel.Messages, 0, len(emsgs))
+		// receiptResults      = make(messagemodel.Receipts, 0, len(emsgs))
+		// blockMessageResults = make(messagemodel.BlockMessages, 0, len(emsgs))
 		// parsedMessageResults = make(messagemodel.ParsedMessages, 0, len(emsgs))
-		transactionsResults = make([]messagemodel.Transaction, 0, len(emsgs))
-		errorsDetected      = make([]*MessageError, 0, len(emsgs))
+		transactionsResults = make([]messagemodel.Transaction, 0, 1) //len(emsgs))
+		// errorsDetected      = make([]*MessageError, 0, len(emsgs))
 	)
 
 	var (
@@ -111,11 +111,12 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 
 		// Record which blocks had which messages, regardless of duplicates
 		for _, blockCid := range m.Blocks {
-			blockMessageResults = append(blockMessageResults, &messagemodel.BlockMessage{
-				Height:  int64(m.Height),
-				Block:   blockCid.String(),
-				Message: m.Cid.String(),
-			})
+			fmt.Println(blockCid)
+			// blockMessageResults = append(blockMessageResults, &messagemodel.BlockMessage{
+			// 	Height:  int64(m.Height),
+			// 	Block:   blockCid.String(),
+			// 	Message: m.Cid.String(),
+			// })
 			totalGasLimit += m.Message.GasLimit
 		}
 
@@ -129,10 +130,10 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 		if b, err := m.Message.Serialize(); err == nil {
 			msgSize = len(b)
 		} else {
-			errorsDetected = append(errorsDetected, &MessageError{
-				Cid:   m.Cid,
-				Error: xerrors.Errorf("failed to serialize message: %w", err).Error(),
-			})
+			// errorsDetected = append(errorsDetected, &MessageError{
+			// 	Cid:   m.Cid,
+			// 	Error: xerrors.Errorf("failed to serialize message: %w", err).Error(),
+			// })
 		}
 
 		// record all unique messages
@@ -150,8 +151,8 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 			Method:     uint64(m.Message.Method),
 			MethodName: methodNames[m.Message.Method],
 		}
-		messageResults = append(messageResults, msg)
-		log.Info("messageResults", messageResults)
+		// messageResults = append(messageResults, msg)
+		// log.Info("messageResults", messageResults)
 
 		rcpt := &messagemodel.Receipt{
 			Height:    int64(ts.Height()), // this is the child height
@@ -161,10 +162,10 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 			ExitCode:  int64(m.Receipt.ExitCode),
 			GasUsed:   m.Receipt.GasUsed,
 		}
-		receiptResults = append(receiptResults, rcpt)
+		// receiptResults = append(receiptResults, rcpt)
 
 		// outputs := p.node.ComputeGasOutputs(m.Receipt.GasUsed, m.Message.GasLimit, m.BlockHeader.ParentBaseFee, m.Message.GasFeeCap, m.Message.GasPremium)
-		transaction := messagemodel.Transaction{
+		transaction := &messagemodel.Transaction{
 			Height:             msg.Height,
 			Cid:                msg.Cid,
 			Sender:             msg.From,
@@ -191,7 +192,14 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 			GasBurned:          m.GasOutputs.GasBurned,
 			ActorName:          builtin2.ActorNameByCode(m.ToActorCode),
 		}
-		transactionsResults = append(transactionsResults, transaction)
+		r, err := p.store.DB.Model(transaction).Insert()
+		if err != nil {
+			log.Info("insert txn", err)
+		} else {
+			log.Info("inserted txn", r)
+		}
+		transaction = nil
+		// transactionsResults = append(transactionsResults, transaction)
 
 		// method, params, err := p.parseMessageParams(m.Message, m.ToActorCode)
 		// if err == nil {
@@ -237,9 +245,9 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 	// }
 
 	return model.PersistableList{
-		messageResults,
-		receiptResults,
-		blockMessageResults,
+		// messageResults,
+		// receiptResults,
+		// blockMessageResults,
 		// parsedMessageResults,
 		// transactionsResults,
 		// messageGasEconomyResult,

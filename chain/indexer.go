@@ -15,6 +15,7 @@ import (
 )
 
 const (
+	InitTask     = "init"
 	BlocksTask   = "blocks"
 	MinersTask   = "miners"
 	MessagesTask = "messages"
@@ -55,6 +56,8 @@ func NewTipSetIndexer(o lens.APIOpener, db *sql.DB, store db.Store, s model.Stor
 	for _, task := range tasks {
 		log.Info("task", task)
 		switch task {
+		// case InitTask:
+		// 	tsi.processors[InitTask] = NewInitProcessor(store)
 		case BlocksTask:
 			tsi.processors[BlocksTask] = NewBlockProcessor(store)
 		case MinersTask:
@@ -195,7 +198,7 @@ func (t *TipSetIndexer) Close() error {
 	}
 	// for name, p := range t.actorProcessors {
 	// 	if err := p.Close(); err != nil {
-	// 		log.Errorw("error received while closing actor task processor", "error", err, "task", name)
+	// 		log.Println("error received while closing actor task processor", "error", err, "task", name)
 	// 	}
 	// }
 	return nil

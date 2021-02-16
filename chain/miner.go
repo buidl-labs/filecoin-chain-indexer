@@ -2,8 +2,11 @@ package chain
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -44,7 +47,6 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 		p.node = node
 		p.closer = closer
 	}
-	// var pl model.PersistableList
 
 	tsk := ts.Key()
 	log.Info("mtsk", tsk)
@@ -53,116 +55,165 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 		return data, err
 	}
 
-	var info miner.MinerInfo
-	var mpower *api.MinerPower
-	var allSectors []*miner.SectorOnChainInfo
-	var activeSectors []*miner.SectorOnChainInfo
-	var fsc uint64
-	var fsa []uint64
-	var minerinfoslist []minermodel.MinerInfo
-	// var minerinfoslist []interface{}
-	var claimedpowerlist []powermodel.PowerActorClaim
-	var minersectorslist []minermodel.MinerSectorInfo
-	var minersectorfaultslist []minermodel.MinerSectorFault
-	var minerdeadlineslist []minermodel.MinerCurrentDeadlineInfo
-	var minerfundslist []minermodel.MinerFund
 	log.Info("SLM addresses", len(addresses))
-	ads := addresses //[:10]
+	ads := addresses //[181:183]
+	// m1, _ := address.NewFromString("f0107995")
+	// m2, _ := address.NewFromString("f080444")
+	// m3, _ := address.NewFromString("f067170")
+	// ads := [3]address.Address{m1, m2, m3}
+	// ads := [1]address.Address{m1}
 	log.Info("SLM SLICE", len(ads), ads)
-
+	// minerinfoslist := make([]*minermodel.MinerInfo, 0, len(ads))
+	// claimedpowerlist := make([]*powermodel.PowerActorClaim, 0, len(ads))
+	// minerdeadlineslist := make([]*minermodel.MinerCurrentDeadlineInfo, 0, len(ads))
+	// minerfundslist := make([]*minermodel.MinerFund, 0, len(ads))
 	// var wg sync.WaitGroup
 	// wg.Add(len(addresses))
-	for _, addr := range ads {
+
+	// i := 0
+	for i, addr := range ads {
+		fmt.Println("lindex", i)
+
+		var info miner.MinerInfo
+		var mpower *api.MinerPower
+		// var allSectors []*miner.SectorOnChainInfo
+		var activeSectors []*miner.SectorOnChainInfo
+		var fsc uint64
+		var fsa []uint64
+
+		//*************************
 		// go func(addr address.Address) {
 		log.Info("miner", addr)
 		// ida, err := p.node.StateAccountKey(context.Background(), addr, tsk)
 		// if err != nil {
-		// 	log.Error(err)
+		// 	log.Println(err)
 		// }
 		// log.Info("IDA", ida)
 		info, err = p.node.StateMinerInfo(context.Background(), addr, tsk)
 		if err != nil {
-			log.Error(err)
+			log.Println(err)
 		}
 		mpower, err = p.node.StateMinerPower(context.Background(), addr, tsk)
 		if err != nil {
-			log.Error(err)
+			log.Println(err)
 		}
 
-		// ask, err := p.node.ClientQueryAsk(context.Background(), *info.PeerId, addr)
+		c1 := make(chan *storagemarket.StorageAsk, 1)
+
+		if info.PeerId != nil {
+			go func() {
+				fmt.Println("infom", info)
+				ask, _ := GetClientAsk(p, info, addr)
+				c1 <- ask
+			}()
+
+			select {
+			case ask := <-c1:
+				fmt.Println(ask)
+				log.Info("SLMAsk: {minerid:", ask.Miner, "price:", ask.Price, "verifiedP:", ask.VerifiedPrice, "minPS:", ask.MinPieceSize, "maxPS:", ask.MaxPieceSize, "timestamp:", ask.Timestamp, "Expiry:", ask.Expiry, "}")
+			case <-time.After(1 * time.Second): // set a higher value
+				fmt.Println("Clientqueryask out of time :(")
+			}
+		}
+
+		// ask, err := GetClientAsk(p, info, addr)
 		// if err != nil {
 		// 	log.Info("SLMCLientqueryask", err)
 		// } else {
 		// 	log.Info("SLMAsk: {minerid:", ask.Miner, "price:", ask.Price, "verifiedP:", ask.VerifiedPrice, "minPS:", ask.MinPieceSize, "maxPS:", ask.MaxPieceSize, "timestamp:", ask.Timestamp, "Expiry:", ask.Expiry, "}")
 		// }
 
-		allSectors, err = p.node.StateMinerSectors(context.Background(), addr, nil, tsk)
-		if err != nil {
-			log.Error(err)
-		}
+		// allSectors, err = p.node.StateMinerSectors(context.Background(), addr, nil, tsk)
+		// if err != nil {
+		// 	log.Println(err)
+		// }
 		activeSectors, err = p.node.StateMinerActiveSectors(context.Background(), addr, tsk)
 		if err != nil {
-			log.Error(err)
+			log.Println(err)
 		}
 		faultySectors, err := p.node.StateMinerFaults(context.Background(), addr, tsk)
 		if err != nil {
-			log.Error(err)
+			log.Println(err)
 		}
 
-		log.Info("SLMallSec count", len(allSectors))
+		// log.Info("SLMallSec count", len(allSectors))
 		log.Info("SLMActSec count", len(activeSectors))
 		fsc, _ = faultySectors.Count()
 		fsa, _ = faultySectors.All(fsc)
 		log.Info("SLMFaultySec count", fsa)
 		log.Info("Info", info)
-		peerID := ""
+
+		peerID := "0"
 		if info.PeerId != nil {
 			peerID = info.PeerId.String()
 		}
-		ownerID := ""
+		ownerID := "0"
 		// if info.Owner != nil {
 		// 	ownerID = info.Owner.String()
 		// }
 		ownerID = info.Owner.String()
-		workerID := ""
+		workerID := "0"
 		// if info.Worker != nil {
 		// 	workerID = info.Worker.String()
 		// }
 		workerID = info.Worker.String()
-		minerinfoslist = append(minerinfoslist, minermodel.MinerInfo{
+
+		mimod := &minermodel.MinerInfo{
 			MinerID:         addr.String(),
-			Address:         "",
+			Address:         "0",
 			PeerID:          peerID,
 			OwnerID:         ownerID,
 			WorkerID:        workerID,
 			Height:          int64(ts.Height()),
-			StateRoot:       "",
-			StorageAskPrice: "",
-			MinPieceSize:    uint64(0),
-			MaxPieceSize:    uint64(0),
-		})
-		rbp := ""
+			StateRoot:       "0",
+			StorageAskPrice: "0",
+			MinPieceSize:    uint64(1),
+			MaxPieceSize:    uint64(1),
+		}
+		r1, err := p.store.DB.Model(mimod).Insert()
+		if err != nil {
+			fmt.Println("MILERR", err)
+		} else {
+			fmt.Println("MIR", r1)
+		}
+		mimod = nil
+
+		rbp := "0"
 		if &mpower.MinerPower.RawBytePower != nil {
 			rbp = mpower.MinerPower.RawBytePower.String()
 		}
-		qap := ""
+		qap := "0"
 		if &mpower.MinerPower.QualityAdjPower != nil {
 			qap = mpower.MinerPower.QualityAdjPower.String()
 		}
-		claimedpowerlist = append(claimedpowerlist, powermodel.PowerActorClaim{
+
+		pac := &powermodel.PowerActorClaim{
 			MinerID:         addr.String(),
 			Height:          int64(ts.Height()),
-			StateRoot:       "",
+			StateRoot:       "0",
 			RawBytePower:    rbp,
 			QualityAdjPower: qap,
-		})
+		}
+		r1, err = p.store.DB.Model(pac).Insert()
+		if err != nil {
+			fmt.Println("PALERR", err)
+		} else {
+			fmt.Println("PAR", r1)
+		}
+		pac = nil
 
-		for _, s := range allSectors {
-			minersectorslist = append(minersectorslist, minermodel.MinerSectorInfo{
+		for _, s := range activeSectors {
+			tsPSstr := ""
+			if ts != nil {
+				tsPS := ts.ParentState()
+				tsPSstr = tsPS.String()
+			}
+
+			msi := &minermodel.MinerSectorInfo{
 				Height:                int64(ts.Height()),
 				MinerID:               addr.String(),
 				SectorID:              uint64(s.SectorNumber),
-				StateRoot:             ts.ParentState().String(),
+				StateRoot:             tsPSstr,
 				SealedCID:             s.SealedCID.String(),
 				ActivationEpoch:       int64(s.Activation),
 				ExpirationEpoch:       int64(s.Expiration),
@@ -171,44 +222,141 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 				InitialPledge:         s.InitialPledge.String(),
 				ExpectedDayReward:     s.ExpectedDayReward.String(),
 				ExpectedStoragePledge: s.ExpectedStoragePledge.String(),
-			})
+			}
+			r, err := p.store.DB.Model(msi).Insert()
+			if err != nil {
+				fmt.Println("MSLERR", err)
+			} else {
+				fmt.Println("MSR", r)
+			}
+			msi = nil
 		}
+
+		// fmt.Println("MSFLLEN", len(minersectorslist))
+		// p.store.PersistMinerSectors(minersectorslist)
+		// r, err := p.store.DB.Model(&minersectorslist).Insert()
+		// if err != nil {
+		// 	fmt.Println("MSLERR", err)
+		// } else {
+		// 	fmt.Println("MSR", r)
+
 		for _, fs := range fsa {
-			minersectorfaultslist = append(minersectorfaultslist, minermodel.MinerSectorFault{
+			// minersectorfaultslist = append(minersectorfaultslist, &minermodel.MinerSectorFault{
+			// 	Height:   int64(ts.Height()),
+			// 	MinerID:  addr.String(),
+			// 	SectorID: fs,
+			// })
+			msf := &minermodel.MinerSectorFault{
 				Height:   int64(ts.Height()),
 				MinerID:  addr.String(),
 				SectorID: fs,
-			})
+			}
+			r1, err := p.store.DB.Model(msf).Insert()
+			if err != nil {
+				fmt.Println("MSFLERR", err)
+			} else {
+				fmt.Println("MSFR", r1)
+			}
+			msf = nil
 		}
-
+		// p.store.PersistMinerSectorFaults(minersectorfaultslist)
+		// r1, err := p.store.DB.Model(&minersectorfaultslist).Insert()
+		// if err != nil {
+		// 	fmt.Println("MSFLERR", err)
+		// } else {
+		// 	fmt.Println("MSFR", r1)
+		// }
 		ec, err := NewMinerStateExtractionContext(p, context.Background(), addr, ts)
 		if err != nil {
-			log.Error(err)
+			log.Println(err)
 		} else {
 			mcdi, err := ExtractMinerCurrentDeadlineInfo(ec, addr, ts)
 			if err != nil {
-				log.Error(err)
+				log.Println(err)
 			} else {
-				minerdeadlineslist = append(minerdeadlineslist, *mcdi)
+				// minerdeadlineslist = append(minerdeadlineslist, mcdi)
+				r1, err = p.store.DB.Model(mcdi).Insert()
+				if err != nil {
+					fmt.Println("MDLERR", err)
+				} else {
+					fmt.Println("MDR", r1)
+				}
 			}
+			mcdi = nil
 			mlf, err := ExtractMinerLockedFunds(ec, addr, ts)
 			if err != nil {
-				log.Error(err)
+				log.Println(err)
 			} else {
-				minerfundslist = append(minerfundslist, *mlf)
+				// minerfundslist = append(minerfundslist, mlf)
+				r1, err = p.store.DB.Model(mlf).Insert()
+				if err != nil {
+					fmt.Println("MFLERR", err)
+				} else {
+					fmt.Println("MFR", r1)
+				}
 			}
+			mlf = nil
 		}
 
 		// wg.Done()
 		// }(addr)
+		// }
+		// p.store.PersistMinerInfos(minerinfoslist)
+		// p.store.PersistPowerActorClaims(claimedpowerlist)
+		// // p.store.PersistMinerSectors(minersectorslist)
+		// p.store.PersistMinerSectorFaults(minersectorfaultslist)
+		// p.store.PersistMinerDeadlines(minerdeadlineslist)
+		// p.store.PersistMinerFunds(minerfundslist)
 	}
+	// }
 	// wg.Wait()
-	p.store.PersistMinerInfos(minerinfoslist)
-	p.store.PersistPowerActorClaims(claimedpowerlist)
-	p.store.PersistMinerSectors(minersectorslist)
-	p.store.PersistMinerSectorFaults(minersectorfaultslist)
-	p.store.PersistMinerDeadlines(minerdeadlineslist)
-	p.store.PersistMinerFunds(minerfundslist)
+	// ***********
+
+	// p.store.PersistMinerInfos(minerinfoslist)
+	// r1, err := p.store.DB.Model(&minerinfoslist).Insert()
+	// if err != nil {
+	// 	fmt.Println("MILERR", err)
+	// } else {
+	// 	fmt.Println("MIR", r1)
+	// }
+	// // p.store.PersistPowerActorClaims(claimedpowerlist)
+	// r1, err = p.store.DB.Model(&claimedpowerlist).Insert()
+	// if err != nil {
+	// 	fmt.Println("PALERR", err)
+	// } else {
+	// 	fmt.Println("PAR", r1)
+	// }
+
+	/*fmt.Println("MSFLLEN", len(minersectorslist))
+	// p.store.PersistMinerSectors(minersectorslist)
+	r, err = p.store.DB.Model(&minersectorslist).Insert()
+	if err != nil {
+		fmt.Println("MSLERR", err)
+	} else {
+		fmt.Println("MSR", r)
+	}
+	// p.store.PersistMinerSectorFaults(minersectorfaultslist)
+	r, err = p.store.DB.Model(&minersectorfaultslist).Insert()
+	if err != nil {
+		fmt.Println("MSFLERR", err)
+	} else {
+		fmt.Println("MSFR", r)
+	}*/
+	// p.store.PersistMinerDeadlines(minerdeadlineslist)
+	// r1, err = p.store.DB.Model(&minerdeadlineslist).Insert()
+	// if err != nil {
+	// 	fmt.Println("MDLERR", err)
+	// } else {
+	// 	fmt.Println("MDR", r1)
+	// }
+	// // p.store.PersistMinerFunds(minerfundslist)
+	// r1, err = p.store.DB.Model(&minerfundslist).Insert()
+	// if err != nil {
+	// 	fmt.Println("MFLERR", err)
+	// } else {
+	// 	fmt.Println("MFR", r1)
+	// }
+
 	// p.store.PersistBatch(minerinfoslist, "miner_info")
 	// p.store.PersistBatch(minersectorslist, "miner_sector_info")
 	// p.store.PersistBatch(minersectorfaultslist, "miner_sector_fault")
@@ -291,10 +439,15 @@ func ExtractMinerCurrentDeadlineInfo(ec *MinerStateExtractionContext, addr addre
 		}
 	}
 
+	tsPSstr := ""
+	if ts != nil {
+		tsPS := ts.ParentState()
+		tsPSstr = tsPS.String()
+	}
 	return &minermodel.MinerCurrentDeadlineInfo{
 		Height:        int64(ec.CurrTs.Height()),
 		MinerID:       addr.String(),
-		StateRoot:     ts.ParentState().String(),
+		StateRoot:     tsPSstr,
 		DeadlineIndex: currDeadlineInfo.Index,
 		PeriodStart:   int64(currDeadlineInfo.PeriodStart),
 		Open:          int64(currDeadlineInfo.Open),
@@ -318,13 +471,26 @@ func ExtractMinerLockedFunds(ec *MinerStateExtractionContext, addr address.Addre
 			return nil, nil
 		}
 	}
+	tsPSstr := ""
+	if ts != nil {
+		tsPS := ts.ParentState()
+		tsPSstr = tsPS.String()
+	}
 	return &minermodel.MinerFund{
 		Height:            int64(ec.CurrTs.Height()),
 		MinerID:           addr.String(),
-		StateRoot:         ts.ParentState().String(),
+		StateRoot:         tsPSstr,
 		LockedFunds:       currLocked.VestingFunds.String(),
 		InitialPledge:     currLocked.InitialPledgeRequirement.String(),
 		PreCommitDeposits: currLocked.PreCommitDeposits.String(),
-		AvailableBalance:  "",
+		AvailableBalance:  "0",
 	}, nil
+}
+
+func GetClientAsk(p *MinerProcessor, info miner.MinerInfo, addr address.Address) (*storagemarket.StorageAsk, error) {
+	ask, err := p.node.ClientQueryAsk(context.Background(), *info.PeerId, addr)
+	if err != nil {
+		return ask, err
+	}
+	return ask, nil
 }

@@ -7,9 +7,9 @@ type MinerInfo struct {
 	StateRoot       string   `pg:",pk,notnull"`
 	OwnerID         string   `pg:",notnull"`
 	WorkerID        string   `pg:",notnull"`
+	PeerID          string   `pg:",notnull"`
+	StorageAskPrice string   `pg:",notnull"`
+	MinPieceSize    uint64   `pg:",notnull"`
+	MaxPieceSize    uint64   `pg:",notnull"`
 	Address         string
-	PeerID          string
-	StorageAskPrice string
-	MinPieceSize    uint64
-	MaxPieceSize    uint64
 }

@@ -1,8 +1,12 @@
 package lotus
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -83,7 +87,9 @@ func (aw *APIWrapper) StateChangedActors(ctx context.Context, old cid.Cid, new c
 }
 
 func (aw *APIWrapper) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
-	return aw.FullNode.StateGetActor(ctx, actor, tsk)
+	// return aw.FullNode.StateGetActor(ctx, actor, tsk)
+	// TODO idk how to get a store.ChainStore here
+	return lens.OptimizedStateGetActorWithFallback(ctx, aw.Store(), aw.FullNode, aw.FullNode, actor, tsk)
 }
 
 func (aw *APIWrapper) StateListActors(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error) {
@@ -157,48 +163,91 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 		return nil, xerrors.Errorf("load parent state tree: %w", err)
 	}
 
+	actorAddresses, err := aw.FullNode.StateListActors(ctx, ts.Key())
 	// TODO: load from db (or some key-value store)
 	// Listen for new actors and insert them into the store
 	// Doing this since loading actors from state tree is time consuming.
-	// plan, _ := ioutil.ReadFile("actorCodes.json")
-	// var results map[string]string // address.Address]cid.Cid
-	// err = json.Unmarshal([]byte(plan), &results)
-	// if err != nil {
-	// 	return nil, xerrors.Errorf("load actorCodes: %w", err)
-	// }
+	plan, _ := ioutil.ReadFile(os.Getenv("ACTOR_CODES_JSON"))
+	var results map[string]string // address.Address]cid.Cid
+	err = json.Unmarshal([]byte(plan), &results)
+	if err != nil {
+		return nil, xerrors.Errorf("load actorCodes: %w", err)
+	}
 	// fmt.Println("HII", "f099", results["f099"])
-	// actorCodes := map[address.Address]cid.Cid{}
-	// for k, v := range results {
-	// 	a, _ := address.NewFromString(k)
-	// 	c, _ := cid.Decode(v)
-	// 	actorCodes[a] = c
-	// }
-	// fmt.Println(actorCodes)
+	actorCodes := map[address.Address]cid.Cid{}
+	actorCodesStr := map[string]string{}
+	for k, v := range results {
+		actorCodesStr[k] = v
+		a, _ := address.NewFromString(k)
+		c, _ := cid.Decode(v)
+		actorCodes[a] = c
+	}
+	fmt.Println("lenac ", len(actorCodes), "lenaddrs", len(actorAddresses))
+	if len(actorCodes) != len(actorAddresses) {
+		c := 0
+		for _, addr := range actorAddresses {
+			if _, ok := actorCodes[addr]; !ok {
+				// fmt.Println("not yet", addr)
+				act, err := aw.FullNode.StateGetActor(ctx, addr, ts.Key())
+				if err != nil {
+					fmt.Println("stategetactor", err)
+				} else {
+					fmt.Println("addr ", addr, " actc", act.Code)
+					actorCodes[addr] = act.Code
+					actorCodesStr[addr.String()] = act.Code.String()
+				}
+				c++
+				//do something here
+			} else {
+				fmt.Println("no issues")
+			}
+		}
+		fmt.Println("COUNTER", c)
+		fmt.Println("NEWACTLEN: ", len(actorCodes), " str: ", len(actorCodesStr))
+		actorCodesData, err := json.Marshal(actorCodesStr)
+		if err != nil {
+			fmt.Println(err)
+			return nil, xerrors.Errorf("json.Marshal: %w", err)
+		}
+		jsonStr := string(actorCodesData)
+		f, _ := os.Create(os.Getenv("ACTOR_CODES_JSON"))
+		defer f.Close()
+		w := bufio.NewWriter(f)
+		n4, _ := w.WriteString(jsonStr)
+		fmt.Printf("wrote %d bytes\n", n4)
+		w.Flush()
+	}
 
 	// Build a lookup of actor codes
-	actorCodes := map[address.Address]cid.Cid{}
-	if err := stateTree.ForEach(func(a address.Address, act *types.Actor) error {
-		actorCodes[a] = act.Code
-		fmt.Println("somerr1", err, a, act.Code)
-		return nil
-	}); err != nil {
-		fmt.Println("somerr2", err)
-		return nil, xerrors.Errorf("iterate actors: %w", err)
-	}
-	fmt.Println("aCs", actorCodes)
-	// actorCodesData, err := json.Marshal(actorCodes)
-	// if err != nil {
-	// 	fmt.Println(err.Error())
-	// 	return nil, xerrors.Errorf("json.Marshal: %w", err)
-	// }
-	// jsonStr := string(actorCodesData)
+	/*
+		actorCodes := map[address.Address]cid.Cid{}
+		actorCodesStr := map[string]string{}
+		if err := stateTree.ForEach(func(a address.Address, act *types.Actor) error {
+			actorCodes[a] = act.Code
+			actorCodesStr[a.String()] = act.Code.String()
+			fmt.Println("somerr1", err, a, act.Code)
+			return nil
+		}); err != nil {
+			fmt.Println("somerr2", err)
+			return nil, xerrors.Errorf("iterate actors: %w", err)
+		}
+		actorCodesData, err := json.Marshal(actorCodesStr)
+		if err != nil {
+			fmt.Println(err)
+			return nil, xerrors.Errorf("json.Marshal: %w", err)
+		}
+		jsonStr := string(actorCodesData)
+		fmt.Println("jsonStr", jsonStr)
 
-	// f, _ := os.Create("actors.json")
-	// defer f.Close()
-	// w := bufio.NewWriter(f)
-	// n4, _ := w.WriteString(jsonStr)
-	// fmt.Printf("wrote %d bytes\n", n4)
-	// w.Flush()
+		currentTime := time.Now()
+		dt := currentTime.Format("2006-01-02")
+		f, _ := os.Create("/var/data/actorCodes " + dt + ".json")
+		defer f.Close()
+		w := bufio.NewWriter(f)
+		n4, _ := w.WriteString(jsonStr)
+		fmt.Printf("wrote %d bytes\n", n4)
+		w.Flush()
+	*/
 
 	getActorCode := func(a address.Address) cid.Cid {
 		c, ok := actorCodes[a]
