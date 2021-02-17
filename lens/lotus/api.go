@@ -1,7 +1,7 @@
 package lotus
 
 import (
-	"bufio"
+	// "bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -16,7 +16,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	// builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+	"github.com/filecoin-project/specs-actors/v3/actors/util/adt"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -183,40 +186,40 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 		actorCodes[a] = c
 	}
 	fmt.Println("lenac ", len(actorCodes), "lenaddrs", len(actorAddresses))
-	if len(actorCodes) != len(actorAddresses) {
-		c := 0
-		for _, addr := range actorAddresses {
-			if _, ok := actorCodes[addr]; !ok {
-				// fmt.Println("not yet", addr)
-				act, err := aw.FullNode.StateGetActor(ctx, addr, ts.Key())
-				if err != nil {
-					fmt.Println("stategetactor", err)
-				} else {
-					fmt.Println("addr ", addr, " actc", act.Code)
-					actorCodes[addr] = act.Code
-					actorCodesStr[addr.String()] = act.Code.String()
-				}
-				c++
-				//do something here
-			} else {
-				fmt.Println("no issues")
-			}
-		}
-		fmt.Println("COUNTER", c)
-		fmt.Println("NEWACTLEN: ", len(actorCodes), " str: ", len(actorCodesStr))
-		actorCodesData, err := json.Marshal(actorCodesStr)
-		if err != nil {
-			fmt.Println(err)
-			return nil, xerrors.Errorf("json.Marshal: %w", err)
-		}
-		jsonStr := string(actorCodesData)
-		f, _ := os.Create(os.Getenv("ACTOR_CODES_JSON"))
-		defer f.Close()
-		w := bufio.NewWriter(f)
-		n4, _ := w.WriteString(jsonStr)
-		fmt.Printf("wrote %d bytes\n", n4)
-		w.Flush()
-	}
+	// if len(actorCodes) != len(actorAddresses) {
+	// 	c := 0
+	// 	for _, addr := range actorAddresses {
+	// 		if _, ok := actorCodes[addr]; !ok {
+	// 			// fmt.Println("not yet", addr)
+	// 			act, err := aw.FullNode.StateGetActor(ctx, addr, ts.Key())
+	// 			if err != nil {
+	// 				fmt.Println("stategetactor", err)
+	// 			} else {
+	// 				fmt.Println("addr ", addr, " actc", act.Code)
+	// 				actorCodes[addr] = act.Code
+	// 				actorCodesStr[addr.String()] = act.Code.String()
+	// 			}
+	// 			c++
+	// 			//do something here
+	// 		} else {
+	// 			fmt.Println("no issues")
+	// 		}
+	// 	}
+	// 	fmt.Println("COUNTER", c)
+	// 	fmt.Println("NEWACTLEN: ", len(actorCodes), " str: ", len(actorCodesStr))
+	// 	actorCodesData, err := json.Marshal(actorCodesStr)
+	// 	if err != nil {
+	// 		fmt.Println(err)
+	// 		return nil, xerrors.Errorf("json.Marshal: %w", err)
+	// 	}
+	// 	jsonStr := string(actorCodesData)
+	// 	f, _ := os.Create(os.Getenv("ACTOR_CODES_JSON"))
+	// 	defer f.Close()
+	// 	w := bufio.NewWriter(f)
+	// 	n4, _ := w.WriteString(jsonStr)
+	// 	fmt.Printf("wrote %d bytes\n", n4)
+	// 	w.Flush()
+	// }
 
 	// Build a lookup of actor codes
 	/*
@@ -321,6 +324,7 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 			FromActorCode: getActorCode(m.Message.From),
 			ToActorCode:   getActorCode(m.Message.To),
 		}
+		fmt.Println("em: fromAN:", builtin2.ActorNameByCode(em.FromActorCode), " toAN:", builtin2.ActorNameByCode(em.ToActorCode), " fromAC:", em.FromActorCode, " toAC: ", em.ToActorCode, " from: ", m.Message.From, " to: ", m.Message.To)
 
 		burn, err := vmi.ShouldBurn(parentStateTree, m.Message, rcpts[index].ExitCode)
 		if err != nil {
@@ -380,4 +384,16 @@ func (a *apiBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error)
 }
 
 func (a *apiBlockstore) HashOnRead(enabled bool) {
+}
+
+// ActorNameByCode returns the name of the actor code. Agnostic to the
+// version of specs-actors.
+func ActorNameByCode(code cid.Cid) string {
+	if name := builtin.ActorNameByCode(code); name != "<unknown>" {
+		return name
+	}
+	if name := builtin2.ActorNameByCode(code); name != "<unknown>" {
+		return name
+	}
+	return builtin2.ActorNameByCode(code)
 }

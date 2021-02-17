@@ -13,6 +13,7 @@ import (
 
 	"github.com/buidl-labs/filecoin-chain-indexer/db"
 	"github.com/buidl-labs/filecoin-chain-indexer/lens"
+	// "github.com/buidl-labs/filecoin-chain-indexer/lens/lotus"
 	"github.com/buidl-labs/filecoin-chain-indexer/model"
 	messagemodel "github.com/buidl-labs/filecoin-chain-indexer/model/messages"
 )

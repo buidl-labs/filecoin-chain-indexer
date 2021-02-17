@@ -21,6 +21,7 @@ require (
 	github.com/filecoin-project/lotus v1.5.0-pre1
 	github.com/filecoin-project/specs-actors v0.9.13
 	github.com/filecoin-project/specs-actors/v2 v2.3.4
+	github.com/filecoin-project/specs-actors/v3 v3.0.1-0.20210122191213-c7ea99141c44
 	github.com/gbrlsnchs/jwt/v3 v3.0.0 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/go-pg/pg/v10 v10.7.5
