@@ -87,7 +87,7 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 		var mid string
 		err := p.store.DB.Model((*miner.MinerInfo)(nil)).Column("miner_id").Where("miner_id = ?", addr.String()).Select(&mid)
 		fmt.Println("GOTmid", mid)
-		if mid != "" {
+		if mid != "" && activeMinersOnly != 1 {
 			fmt.Println(mid, " already exists")
 		} else {
 			fmt.Println("empty")
@@ -111,6 +111,11 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 				log.Println(err)
 			}
 			mpower, err = p.node.StateMinerPower(context.Background(), addr, tsk)
+			if err != nil {
+				log.Println(err)
+			}
+			// var availableBal big.Int
+			availableBal, err := p.node.StateMinerAvailableBalance(context.Background(), addr, tsk)
 			if err != nil {
 				log.Println(err)
 			}
@@ -300,7 +305,11 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 					}
 				}
 				mcdi = nil
-				mlf, err := ExtractMinerLockedFunds(ec, addr, ts)
+				availableBalStr := "0"
+				if &availableBal != nil {
+					availableBalStr = availableBal.String()
+				}
+				mlf, err := ExtractMinerLockedFunds(ec, addr, ts, availableBalStr)
 				if err != nil {
 					log.Println(err)
 				} else {
@@ -475,7 +484,7 @@ func ExtractMinerCurrentDeadlineInfo(ec *MinerStateExtractionContext, addr addre
 	}, nil
 }
 
-func ExtractMinerLockedFunds(ec *MinerStateExtractionContext, addr address.Address, ts *types.TipSet) (*minermodel.MinerFund, error) {
+func ExtractMinerLockedFunds(ec *MinerStateExtractionContext, addr address.Address, ts *types.TipSet, availableBal string) (*minermodel.MinerFund, error) {
 	currLocked, err := ec.CurrState.LockedFunds()
 	if err != nil {
 		return nil, xerrors.Errorf("loading current miner locked funds: %w", err)
@@ -501,7 +510,7 @@ func ExtractMinerLockedFunds(ec *MinerStateExtractionContext, addr address.Addre
 		LockedFunds:       currLocked.VestingFunds.String(),
 		InitialPledge:     currLocked.InitialPledgeRequirement.String(),
 		PreCommitDeposits: currLocked.PreCommitDeposits.String(),
-		AvailableBalance:  "0",
+		AvailableBalance:  availableBal,
 	}, nil
 }
 
