@@ -79,24 +79,28 @@ func Walk(cfg config.Config, tasks []string, taskType int) error {
 	minHeight := from //453935) // setting a dummy value here
 	// minHeight := maxHeight - 2
 
-	if tasks[0] == "messages" {
-		var txnsParsedTill int
-		txn := new(messagemodel.Transaction)
-		err := store.DB.Model(txn).ColumnExpr("max(height)").Select(&txnsParsedTill)
-		if err != nil {
-			panic(err)
+	if cfg.From == int64(-1) {
+		if tasks[0] == "messages" {
+			var txnsParsedTill int
+			txn := new(messagemodel.Transaction)
+			err := store.DB.Model(txn).ColumnExpr("max(height)").Select(&txnsParsedTill)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				fmt.Println("txnsParsedTill ", txnsParsedTill)
+				minHeight = int64(txnsParsedTill)
+			}
+		} else if tasks[0] == "blocks" {
+			var txnsParsedTill int
+			bhr := new(blocksmodel.BlockHeader)
+			err := store.DB.Model(bhr).ColumnExpr("max(height)").Select(&txnsParsedTill)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				fmt.Println("txnsParsedTill ", txnsParsedTill)
+				minHeight = int64(txnsParsedTill)
+			}
 		}
-		fmt.Println("txnsParsedTill ", txnsParsedTill)
-		minHeight = int64(txnsParsedTill)
-	} else if tasks[0] == "blocks"{
-		var txnsParsedTill int
-		bhr := new(blocksmodel.BlockHeader)
-		err := store.DB.Model(bhr).ColumnExpr("max(height)").Select(&txnsParsedTill)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println("txnsParsedTill ", txnsParsedTill)
-		minHeight = int64(txnsParsedTill)
 	}
 	log.Info("FROMM", minHeight, maxHeight)
 
