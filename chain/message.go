@@ -44,24 +44,24 @@ func (p *MessageProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) 
 
 	var data model.Persistable
 	var err error
-	var txns []messagemodel.Transaction
+	// var txns []messagemodel.Transaction
 
-	fmt.Println("msgPT")
+	// fmt.Println("msgPT")
 	if p.lastTipSet != nil {
 		if p.lastTipSet.Height() > ts.Height() {
-			log.Info("p.lastTipSet.Height() > ts.Height()")
+			// log.Info("p.lastTipSet.Height() > ts.Height()")
 			// last tipset seen was the child
-			data, txns, err = p.processExecutedMessages(ctx, p.lastTipSet, ts)
+			data, _, err = p.processExecutedMessages(ctx, p.lastTipSet, ts)
 		} else if p.lastTipSet.Height() < ts.Height() {
-			log.Info("p.lastTipSet.Height() < ts.Height()")
+			// log.Info("p.lastTipSet.Height() < ts.Height()")
 			// last tipset seen was the parent
-			data, txns, err = p.processExecutedMessages(ctx, ts, p.lastTipSet)
+			data, _, err = p.processExecutedMessages(ctx, ts, p.lastTipSet)
 		} else {
-			log.Println("out of order tipsets", "height", ts.Height(), "last_height", p.lastTipSet.Height())
+			// log.Println("out of order tipsets", "height", ts.Height(), "last_height", p.lastTipSet.Height())
 		}
 	}
 
-	fmt.Println("Ptipset", data, txns)
+	// fmt.Println("Ptipset", data, txns)
 
 	p.lastTipSet = ts
 
@@ -80,7 +80,7 @@ func (p *MessageProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) 
 
 func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts *types.TipSet) (model.Persistable, []messagemodel.Transaction, error) {
 	emsgs, err := p.node.GetExecutedMessagesForTipset(ctx, ts, pts)
-	fmt.Println("HEREemsgs", emsgs)
+	// fmt.Println("HEREemsgs", emsgs)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -192,11 +192,11 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 			GasBurned:          m.GasOutputs.GasBurned,
 			ActorName:          builtin2.ActorNameByCode(m.ToActorCode),
 		}
-		r, err := p.store.DB.Model(transaction).Insert()
+		_, err := p.store.DB.Model(transaction).Insert()
 		if err != nil {
 			log.Info("insert txn", err)
 		} else {
-			log.Info("inserted txn", r)
+			// log.Info("inserted txn", r)
 		}
 		transaction = nil
 		// transactionsResults = append(transactionsResults, transaction)

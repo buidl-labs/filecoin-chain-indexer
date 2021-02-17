@@ -33,7 +33,7 @@ func NewMarketProcessor(opener lens.APIOpener, store db.Store) *MarketProcessor 
 
 func (p *MarketProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (model.Persistable, error) {
 	var data model.Persistable
-	log.Info("marketPTS")
+	// log.Info("marketPTS")
 	if p.node == nil {
 		node, closer, err := p.opener.Open(ctx)
 		if err != nil {
@@ -54,7 +54,7 @@ func (p *MarketProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (
 		return nil, err
 	}
 	log.Info("final: ", time.Now())
-	log.Info("marketDS", dealStates)
+	log.Info("marketDS", len(dealStates))
 
 	// var marketdealproposalslist []marketmodel.MarketDealProposal
 	// states := make(marketmodel.MarketDealStates, len(dealStates))
@@ -90,17 +90,17 @@ func (p *MarketProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (
 			IsVerified:           deal.Proposal.VerifiedDeal,
 			Label:                deal.Proposal.Label,
 		}
-		r, err := p.store.DB.Model(mdp).Insert()
+		_, err = p.store.DB.Model(mdp).Insert()
 		if err != nil {
 			log.Info("insert mdp", err)
 		} else {
-			log.Info("inserted mdp", r)
+			// log.Info("inserted mdp", r)
 		}
-		r, err = p.store.DB.Model(mds).Insert()
+		_, err = p.store.DB.Model(mds).Insert()
 		if err != nil {
 			log.Info("insert mdp", err)
 		} else {
-			log.Info("inserted mdp", r)
+			// log.Info("inserted mdp", r)
 		}
 		mdp = nil
 	}

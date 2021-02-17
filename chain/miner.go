@@ -51,7 +51,7 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 	}
 
 	tsk := ts.Key()
-	log.Info("mtsk", tsk)
+	// log.Info("mtsk", tsk)
 	addresses, err := p.node.StateListMiners(context.Background(), tsk)
 	if err != nil {
 		return data, err
@@ -72,7 +72,7 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 	// m3, _ := address.NewFromString("f067170")
 	// ads := [3]address.Address{m1, m2, m3}
 	// ads := [1]address.Address{m1}
-	log.Info("SLM SLICE", len(ads), ads)
+	log.Info("SLM SLICE", len(ads))
 	// minerinfoslist := make([]*minermodel.MinerInfo, 0, len(ads))
 	// claimedpowerlist := make([]*powermodel.PowerActorClaim, 0, len(ads))
 	// minerdeadlineslist := make([]*minermodel.MinerCurrentDeadlineInfo, 0, len(ads))
@@ -124,7 +124,7 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 
 			if info.PeerId != nil {
 				go func() {
-					fmt.Println("infom", info)
+					// fmt.Println("infom", info)
 					ask, _ := GetClientAsk(p, info, addr)
 					c1 <- ask
 				}()
@@ -192,11 +192,11 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 				MinPieceSize:    uint64(1),
 				MaxPieceSize:    uint64(1),
 			}
-			r1, err := p.store.DB.Model(mimod).Insert()
+			_, err = p.store.DB.Model(mimod).Insert()
 			if err != nil {
 				fmt.Println("MILERR", err)
 			} else {
-				fmt.Println("MIR", r1)
+				// fmt.Println("MIR", r1)
 			}
 			mimod = nil
 
@@ -216,11 +216,11 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 				RawBytePower:    rbp,
 				QualityAdjPower: qap,
 			}
-			r1, err = p.store.DB.Model(pac).Insert()
+			_, err = p.store.DB.Model(pac).Insert()
 			if err != nil {
 				fmt.Println("PALERR", err)
 			} else {
-				fmt.Println("PAR", r1)
+				// fmt.Println("PAR", r1)
 			}
 			pac = nil
 
@@ -245,11 +245,11 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 					ExpectedDayReward:     s.ExpectedDayReward.String(),
 					ExpectedStoragePledge: s.ExpectedStoragePledge.String(),
 				}
-				r, err := p.store.DB.Model(msi).Insert()
+				_, err := p.store.DB.Model(msi).Insert()
 				if err != nil {
 					fmt.Println("MSLERR", err)
 				} else {
-					fmt.Println("MSR", r)
+					// fmt.Println("MSR", r)
 				}
 				msi = nil
 			}
@@ -273,11 +273,11 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 					MinerID:  addr.String(),
 					SectorID: fs,
 				}
-				r1, err := p.store.DB.Model(msf).Insert()
+				_, err := p.store.DB.Model(msf).Insert()
 				if err != nil {
 					fmt.Println("MSFLERR", err)
 				} else {
-					fmt.Println("MSFR", r1)
+					// fmt.Println("MSFR", r1)
 				}
 				msf = nil
 			}
@@ -297,11 +297,11 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 					log.Println(err)
 				} else {
 					// minerdeadlineslist = append(minerdeadlineslist, mcdi)
-					r1, err = p.store.DB.Model(mcdi).Insert()
+					_, err = p.store.DB.Model(mcdi).Insert()
 					if err != nil {
 						fmt.Println("MDLERR", err)
 					} else {
-						fmt.Println("MDR", r1)
+						// fmt.Println("MDR", r1)
 					}
 				}
 				mcdi = nil
@@ -314,11 +314,11 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 					log.Println(err)
 				} else {
 					// minerfundslist = append(minerfundslist, mlf)
-					r1, err = p.store.DB.Model(mlf).Insert()
+					_, err = p.store.DB.Model(mlf).Insert()
 					if err != nil {
 						fmt.Println("MFLERR", err)
 					} else {
-						fmt.Println("MFR", r1)
+						// fmt.Println("MFR", r1)
 					}
 				}
 				mlf = nil
@@ -406,7 +406,7 @@ func NewMinerStateExtractionContext(p *MinerProcessor, ctx context.Context, addr
 	if err != nil {
 		return nil, err
 	}
-	log.Info("CGTS", tsk, curActor)
+	// log.Info("CGTS", tsk, curActor)
 	curTipset, err := p.node.ChainGetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, err
@@ -418,7 +418,7 @@ func NewMinerStateExtractionContext(p *MinerProcessor, ctx context.Context, addr
 
 	prevState := curState
 	if ts.Height() != 0 {
-		log.Info("TSP", ts.Parents())
+		// log.Info("TSP", ts.Parents())
 		prevActor, err := p.node.StateGetActor(ctx, addr, ts.Parents())
 		if err != nil {
 			return nil, xerrors.Errorf("loading previous miner %s at tipset %s epoch %d: %w", addr, ts.Parents(), ts.Height(), err)
