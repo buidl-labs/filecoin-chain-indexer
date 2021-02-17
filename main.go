@@ -35,8 +35,8 @@ func walk(cfg config.Config) {
 	// if err != nil {
 	// 	log.Println("init task", err)
 	// }
-	go services.Walk(cfg, msg, 0)  // taskType=0
-	go services.Walk(cfg, blk, 0)  // taskType=0
+	go services.Walk(cfg, msg, 0) // taskType=0
+	go services.Walk(cfg, blk, 0) // taskType=0
 	// go services.Walk(cfg, minr, 1) // taskType=1
 	go services.Walk(cfg, mkt, 1) // taskType=1
 

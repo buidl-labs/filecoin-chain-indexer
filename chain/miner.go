@@ -3,6 +3,8 @@ package chain
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -56,7 +58,15 @@ func (p *MinerProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet) (m
 	}
 
 	log.Info("SLM addresses", len(addresses))
-	ads := addresses //[181:183]
+
+	var ads []address.Address
+	activeMinersOnly, _ := getenvInt("ACTIVE_MINERS_ONLY")
+	if activeMinersOnly == 1 {
+		ads, _ = ActiveMinerAddresses()
+		fmt.Println("got active miners only", len(ads))
+	} else {
+		ads = addresses //[181:183]
+	}
 	// m1, _ := address.NewFromString("f0107995")
 	// m2, _ := address.NewFromString("f080444")
 	// m3, _ := address.NewFromString("f067170")
@@ -501,4 +511,12 @@ func GetClientAsk(p *MinerProcessor, info miner.MinerInfo, addr address.Address)
 		return ask, err
 	}
 	return ask, nil
+}
+
+func getenvInt(key string) (int, error) {
+	v, err := strconv.Atoi(os.Getenv(key))
+	if err != nil {
+		return -1, err
+	}
+	return v, nil
 }
