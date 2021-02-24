@@ -58,6 +58,7 @@ type StateAPI interface {
 	StateGetReceipt(ctx context.Context, bcid cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error)
 	StateListActors(context.Context, types.TipSetKey) ([]address.Address, error)
 	StateListMiners(context.Context, types.TipSetKey) ([]address.Address, error)
+	StateListMessages(ctx context.Context, match *api.MessageMatch, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateMarketDeals(context.Context, types.TipSetKey) (map[string]api.MarketDeal, error)

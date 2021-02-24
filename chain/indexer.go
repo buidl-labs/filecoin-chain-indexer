@@ -15,11 +15,12 @@ import (
 )
 
 const (
-	InitTask     = "init"
-	BlocksTask   = "blocks"
-	MinersTask   = "miners"
-	MessagesTask = "messages"
-	MarketsTask  = "markets"
+	InitTask      = "init"
+	MinerTxnsTask = "minertxns"
+	BlocksTask    = "blocks"
+	MinersTask    = "miners"
+	MessagesTask  = "messages"
+	MarketsTask   = "markets"
 )
 
 var _ TipSetObserver = (*TipSetIndexer)(nil)
@@ -58,6 +59,8 @@ func NewTipSetIndexer(o lens.APIOpener, db *sql.DB, store db.Store, s model.Stor
 		switch task {
 		// case InitTask:
 		// 	tsi.processors[InitTask] = NewInitProcessor(store)
+		case MinerTxnsTask:
+			tsi.processors[MinerTxnsTask] = NewMinerTxnsProcessor(o, store)
 		case BlocksTask:
 			tsi.processors[BlocksTask] = NewBlockProcessor(store)
 		case MinersTask:

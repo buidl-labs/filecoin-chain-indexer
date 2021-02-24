@@ -2,8 +2,11 @@ package chain
 
 import (
 	"context"
+	"fmt"
+	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	// "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/types"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/xerrors"
@@ -78,28 +81,73 @@ func (c *Walker) Run(ctx context.Context) error {
 
 func (c *Walker) WalkChain(ctx context.Context, node lens.API, ts *types.TipSet) error {
 	log.Info("in WalkChain", "found tipset", "height", ts.Height())
-	if err := c.obs.TipSet(ctx, ts); err != nil {
-		return xerrors.Errorf("notify tipset: %w", err)
-	}
+	// go func(ts *types.TipSet, c *Walker) error {
+	// if err := c.obs.TipSet(ctx, ts); err != nil {
+	// 	return xerrors.Errorf("notify tipset: %w", err)
+	// }
+	// return nil
+	// }(ts, c)
 
 	var err error
-	for int64(ts.Height()) >= c.minHeight && ts.Height() > 0 {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
+	if c.tasks[0] == "minertxns" {
+		fmt.Println("minertxnstask ", ts.Height())
+		var wg sync.WaitGroup
+		l := int(c.maxHeight - c.minHeight)
+		fmt.Println(c.maxHeight, " ", c.minHeight, " Lhh", l)
+		// wg.Add(l)
+		for i := int(c.minHeight); i <= int(c.maxHeight); i++ {
+			// select {
+			// case <-ctx.Done():
+			// 	return ctx.Err()
+			// default:
+			// }
+			wg.Add(1)
 
-		ts, err = node.ChainGetTipSet(ctx, ts.Parents())
-		if err != nil {
-			return xerrors.Errorf("get tipset: %w", err)
+			go worker(c, node, ctx, &wg, i)
 		}
-
-		log.Info("found tipset", "height", ts.Height())
+		wg.Wait()
+	} else {
 		if err := c.obs.TipSet(ctx, ts); err != nil {
 			return xerrors.Errorf("notify tipset: %w", err)
 		}
+
+		for int64(ts.Height()) >= c.minHeight && ts.Height() > 0 {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+
+			ts, err = node.ChainGetTipSet(ctx, ts.Parents())
+			if err != nil {
+				return xerrors.Errorf("get tipset: %w", err)
+			}
+
+			log.Info("found tipset", "height", ts.Height())
+			if err := c.obs.TipSet(ctx, ts); err != nil {
+				return xerrors.Errorf("notify tipset: %w", err)
+			}
+		}
 	}
 
+	return nil
+}
+
+func worker(c *Walker, node lens.API, ctx context.Context, wg *sync.WaitGroup, i int) error {
+	defer wg.Done()
+	fmt.Println("currHeight ", i, " starting")
+	// fmt.Println("cgts")
+	ts, err := node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(i), types.EmptyTSK)
+	if err != nil {
+		fmt.Println("get tipset", err)
+		return xerrors.Errorf("get tipset: %w", err)
+	}
+	fmt.Println("Gotabits", ts.Height())
+
+	log.Info("found tipset", "height", ts.Height())
+	if err := c.obs.TipSet(ctx, ts); err != nil {
+		return xerrors.Errorf("notify tipset: %w", err)
+	}
+	fmt.Println("h ", i, " done")
 	return nil
 }

@@ -45,6 +45,22 @@ type Transaction struct {
 	GasBurned          int64           `pg:",use_zero,notnull"`
 }
 
+type MinerTransaction struct {
+	tableName     struct{} `pg:"miner_transactions"` // nolint: structcheck,unused
+	Height        int64    `pg:",pk,use_zero,notnull"`
+	Cid           string   `pg:",pk,notnull"`
+	Sender        string   `pg:""` // miner/owner/worker/from account
+	Receiver      string   `pg:""` // miner/owner/worker/to account
+	Amount        string   `pg:""` // amount (+/- FIL)
+	GasFeeCap     string   `pg:""`
+	GasPremium    string   `pg:""`
+	GasLimit      int64    `pg:""`
+	Nonce         uint64   `pg:""`
+	Method        uint64   `pg:""`
+	FromActorName string   `pg:""`
+	ToActorName   string   `pg:""`
+}
+
 func (t *Transaction) Persist(ctx context.Context, s model.StorageBatch) error {
 	return s.PersistModel(ctx, t)
 }

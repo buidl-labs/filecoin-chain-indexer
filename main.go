@@ -47,25 +47,37 @@ func main() {
 	go func() {
 		log.Info(http.ListenAndServe("localhost:6060", nil))
 	}()
-	from, _ := getenvInt("FROM")
-	to, _ := getenvInt("TO")
+	// from, _ := getenvInt("FROM")
+	// to, _ := getenvInt("TO")
 
-	cfg := config.Config{
-		DBConnStr:       os.Getenv("DB"),
-		FullNodeAPIInfo: os.Getenv("FULLNODE_API_INFO"),
-		CacheSize:       1, // TODO: Not using chain cache ATM
-		From:            int64(from),
-		To:              int64(to),
-	}
-	log.Info("Starting filecoin-chain-indexer")
+	// cfg := config.Config{
+	// 	DBConnStr:       os.Getenv("DB"),
+	// 	FullNodeAPIInfo: os.Getenv("FULLNODE_API_INFO"),
+	// 	CacheSize:       1, // TODO: Not using chain cache ATM
+	// 	From:            int64(from),
+	// 	To:              int64(to),
+	// }
+	// log.Info("Starting filecoin-chain-indexer")
 
 	var command string
+	var sfrom int
+	var sto int
 
 	flag.StringVar(&command, "cmd", "", "Command to run")
+	flag.IntVar(&sfrom, "from", 0, "from height")
+	flag.IntVar(&sto, "to", 500000, "to height")
 	flag.Parse()
 	if command == "" {
 		log.Fatal("Command is required")
 	}
+	cfg := config.Config{
+		DBConnStr:       os.Getenv("DB"),
+		FullNodeAPIInfo: os.Getenv("FULLNODE_API_INFO"),
+		CacheSize:       1, // TODO: Not using chain cache ATM
+		From:            int64(sfrom),
+		To:              int64(sto),
+	}
+	log.Info("Starting filecoin-chain-indexer")
 
 	switch command {
 	case "migrate", "rollback":
@@ -89,6 +101,15 @@ func main() {
 	case "minerinit":
 		minr := []string{"miners"}
 		services.Walk(cfg, minr, 1)
+	case "minertxns":
+		minertxns := []string{"minertxns"}
+		initt := time.Now()
+		log.Info("initial: ", initt)
+		services.Walk(cfg, minertxns, 0)
+		finall := time.Now()
+		log.Info("final: ", finall)
+		diff := finall.Sub(initt)
+		log.Info("diff: ", diff)
 	default:
 		log.Fatal("Please use a valid command")
 	}
