@@ -91,21 +91,30 @@ func (c *Walker) WalkChain(ctx context.Context, node lens.API, ts *types.TipSet)
 	var err error
 	if c.tasks[0] == "minertxns" {
 		fmt.Println("minertxnstask ", ts.Height())
+		x := 120
 		var wg sync.WaitGroup
-		l := int(c.maxHeight - c.minHeight)
-		fmt.Println(c.maxHeight, " ", c.minHeight, " Lhh", l)
-		// wg.Add(l)
-		for i := int(c.minHeight); i <= int(c.maxHeight); i++ {
-			// select {
-			// case <-ctx.Done():
-			// 	return ctx.Err()
-			// default:
-			// }
-			wg.Add(1)
-
-			go worker(c, node, ctx, &wg, i)
+		l := int(c.maxHeight - c.minHeight) // + 1
+		if l < 120 {
+			x = l
 		}
-		wg.Wait()
+		rem := l % x
+		fmt.Println(c.maxHeight, " ", c.minHeight, " Lhh", l)
+		for j := int(c.minHeight); j < int(c.maxHeight)-rem && j+x <= int(c.maxHeight); j += x {
+			// wg.Add(x)
+			for i := j; i < j+x; i++ {
+				wg.Add(1)
+				go worker(c, node, ctx, &wg, i)
+			}
+			wg.Wait()
+		}
+		var wg2 sync.WaitGroup
+		// wg2.Add(rem)
+		for i := int(c.maxHeight) - rem; i <= int(c.maxHeight); i++ {
+			wg2.Add(1)
+			go worker(c, node, ctx, &wg2, i)
+		}
+		wg2.Wait()
+
 	} else {
 		if err := c.obs.TipSet(ctx, ts); err != nil {
 			return xerrors.Errorf("notify tipset: %w", err)
@@ -133,21 +142,24 @@ func (c *Walker) WalkChain(ctx context.Context, node lens.API, ts *types.TipSet)
 	return nil
 }
 
-func worker(c *Walker, node lens.API, ctx context.Context, wg *sync.WaitGroup, i int) error {
-	defer wg.Done()
+func worker(c *Walker, node lens.API, ctx context.Context, wg *sync.WaitGroup, i int) {
+	// defer wg.Done()
 	fmt.Println("currHeight ", i, " starting")
 	// fmt.Println("cgts")
 	ts, err := node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(i), types.EmptyTSK)
 	if err != nil {
 		fmt.Println("get tipset", err)
-		return xerrors.Errorf("get tipset: %w", err)
+		wg.Done()
+		// return xerrors.Errorf("get tipset: %w", err)
+	} else {
+		log.Info("found tipset", "height", ts.Height())
+		if err := c.obs.TipSet(ctx, ts); err != nil {
+			fmt.Println("notify tipset", err)
+			wg.Done()
+			// return xerrors.Errorf("notify tipset: %w", err)
+		} else {
+			fmt.Println("h ", i, " done")
+			wg.Done()
+		}
 	}
-	fmt.Println("Gotabits", ts.Height())
-
-	log.Info("found tipset", "height", ts.Height())
-	if err := c.obs.TipSet(ctx, ts); err != nil {
-		return xerrors.Errorf("notify tipset: %w", err)
-	}
-	fmt.Println("h ", i, " done")
-	return nil
 }
