@@ -11,10 +11,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/xerrors"
 
+	"github.com/buidl-labs/filecoin-chain-indexer/config"
 	"github.com/buidl-labs/filecoin-chain-indexer/lens"
 )
 
-func NewWalker(opener lens.APIOpener, obs TipSetObserver, tasks []string, taskType int, minHeight, maxHeight int64) *Walker {
+func NewWalker(opener lens.APIOpener, obs TipSetObserver, tasks []string, taskType int, minHeight, maxHeight int64, cfg config.Config) *Walker {
 	return &Walker{
 		opener:    opener,
 		obs:       obs,
@@ -23,6 +24,7 @@ func NewWalker(opener lens.APIOpener, obs TipSetObserver, tasks []string, taskTy
 		maxHeight: maxHeight,
 		tasks:     tasks,
 		taskType:  taskType,
+		cfg:       cfg,
 	}
 }
 
@@ -34,6 +36,7 @@ type Walker struct {
 	maxHeight int64 // limit persisting to tipsets equal to or below this height}
 	tasks     []string
 	taskType  int
+	cfg       config.Config
 }
 
 func (c *Walker) Run(ctx context.Context) error {
@@ -51,8 +54,19 @@ func (c *Walker) Run(ctx context.Context) error {
 
 	if c.taskType == 1 {
 		log.Info("taskType 1 (currentEpochTasks): found tipset", "height", ts.Height())
-		if err := c.obs.TipSet(ctx, ts); err != nil {
-			return xerrors.Errorf("notify tipset: %w", err)
+		if c.tasks[0] == "minerinfo" {
+			fmt.Println("minfott1")
+			ts, err := node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(c.cfg.Epoch), types.EmptyTSK)
+			if err != nil {
+				return xerrors.Errorf("get tipset by height: %w", err)
+			}
+			if err := c.obs.TipSet(ctx, ts); err != nil {
+				return xerrors.Errorf("notify tipset: %w", err)
+			}
+		} else {
+			if err := c.obs.TipSet(ctx, ts); err != nil {
+				return xerrors.Errorf("notify tipset: %w", err)
+			}
 		}
 	} else {
 		log.Info("taskType 0 (allEpochsTasks): found tipset", "height", ts.Height())

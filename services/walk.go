@@ -100,12 +100,14 @@ func Walk(cfg config.Config, tasks []string, taskType int) error {
 				fmt.Println("txnsParsedTill ", txnsParsedTill)
 				minHeight = int64(txnsParsedTill)
 			}
+		} else if tasks[0] == "minerinfo" {
+			fmt.Println("walk minerinfo task")
 		}
 	}
 	log.Info("FROMM", minHeight, maxHeight)
 
 	// walker := chain.NewWalker(&apistruct.FullNodeStruct{}, tsIndexer, 10, 1000)
-	walker := chain.NewWalker(lensOpener, tsIndexer, tasks, taskType, minHeight, maxHeight)
+	walker := chain.NewWalker(lensOpener, tsIndexer, tasks, taskType, minHeight, maxHeight, cfg)
 	// walker := chain.NewWalker(lensOpener, tsIndexer, 10195, 10200)
 	err = walker.Run(context.Background())
 	if err != nil {

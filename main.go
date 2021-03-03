@@ -70,12 +70,15 @@ func main() {
 	if command == "" {
 		log.Fatal("Command is required")
 	}
+	epoch, _ := getenvInt("EPOCH")
 	cfg := config.Config{
 		DBConnStr:       os.Getenv("DB"),
 		FullNodeAPIInfo: os.Getenv("FULLNODE_API_INFO"),
 		CacheSize:       1, // TODO: Not using chain cache ATM
 		From:            int64(sfrom),
 		To:              int64(sto),
+		Miner:           os.Getenv("MINERID"),
+		Epoch:           int64(epoch),
 	}
 	log.Info("Starting filecoin-chain-indexer")
 
@@ -110,6 +113,19 @@ func main() {
 		log.Info("final: ", finall)
 		diff := finall.Sub(initt)
 		log.Info("diff: ", diff)
+	case "minerinfo":
+		minerinfo := []string{"minerinfo"}
+		services.Walk(cfg, minerinfo, 1)
+	case "actorcodes":
+		minerinfo := []string{"minerinfo"}
+		services.Walk(cfg, minerinfo, 1)
+		dayTicker := time.NewTicker(24 * time.Hour)
+		for {
+			select {
+			case <-dayTicker.C:
+				services.Walk(cfg, minerinfo, 1)
+			}
+		}
 	default:
 		log.Fatal("Please use a valid command")
 	}

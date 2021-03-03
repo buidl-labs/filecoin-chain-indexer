@@ -6,4 +6,6 @@ type Config struct {
 	CacheSize       int
 	From            int64
 	To              int64
+	Miner           string
+	Epoch           int64
 }
