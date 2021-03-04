@@ -63,9 +63,11 @@ func main() {
 	var sfrom int
 	var sto int
 
+	fromenv, _ := getenvInt("FROM")
+	toenv, _ := getenvInt("TO")
 	flag.StringVar(&command, "cmd", "", "Command to run")
-	flag.IntVar(&sfrom, "from", 0, "from height")
-	flag.IntVar(&sto, "to", 500000, "to height")
+	flag.IntVar(&sfrom, "from", fromenv, "from height")
+	flag.IntVar(&sto, "to", toenv, "to height")
 	flag.Parse()
 	if command == "" {
 		log.Fatal("Command is required")
