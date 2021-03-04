@@ -32,6 +32,9 @@ type Transaction struct {
 	Nonce              uint64          `pg:",use_zero,notnull"`
 	Method             uint64          `pg:",use_zero,notnull"`
 	MethodName         string          `pg:",notnull"`
+	ParamsBytes        []byte          `pg:""`
+	Params             string          `pg:""`
+	Transferred        string          `pg:""`
 	ActorName          string          `pg:",notnull"`
 	ExitCode           int64           `pg:",use_zero,notnull"`
 	GasUsed            int64           `pg:",use_zero,notnull"`

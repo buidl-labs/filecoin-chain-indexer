@@ -13,18 +13,18 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
-	log "github.com/sirupsen/logrus"
 	// builtininit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	miner "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/xerrors"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/lens"
@@ -150,6 +150,10 @@ func (aw *APIWrapper) StateSearchMsg(ctx context.Context, bcid cid.Cid) (*api.Ms
 	return aw.FullNode.StateSearchMsg(ctx, bcid)
 }
 
+func (aw *APIWrapper) StateDecodeParams(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error) {
+	return aw.FullNode.StateDecodeParams(ctx, toAddr, method, params, tsk)
+}
+
 // func (aw *APIWrapper) ComputeGasOutputs(gasUsed, gasLimit int64, baseFee, feeCap, gasPremium abi.TokenAmount) vm.GasOutputs {
 // 	return vm.ComputeGasOutputs(gasUsed, gasLimit, baseFee, feeCap, gasPremium)
 // }
@@ -246,7 +250,16 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 		return nil, xerrors.Errorf("load parent state tree: %w", err)
 	}
 
-	actorAddresses, err := aw.FullNode.StateListActors(ctx, ts.Key())
+	// initActor, err := stateTree.GetActor(builtininit.Address)
+	// if err != nil {
+	// 	return nil, xerrors.Errorf("getting init actor: %w", err)
+	// }
+	// initActorState, err := builtininit.Load(aw.Store(), initActor)
+	// if err != nil {
+	// 	return nil, xerrors.Errorf("loading init actor state: %w", err)
+	// }
+
+	// actorAddresses, err := aw.FullNode.StateListActors(ctx, ts.Key())
 	// TODO: load from db (or some key-value store)
 	// Listen for new actors and insert them into the store
 	// Doing this since loading actors from state tree is time consuming.
@@ -265,7 +278,7 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 		c, _ := cid.Decode(v)
 		actorCodes[a] = c
 	}
-	fmt.Println("lenac ", len(actorCodes), "lenaddrs", len(actorAddresses))
+	// fmt.Println("lenac ", len(actorCodes), "lenaddrs", len(actorAddresses))
 	// if len(actorCodes) != len(actorAddresses) {
 	// 	c := 0
 	// 	for _, addr := range actorAddresses {
@@ -340,6 +353,19 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 
 		return cid.Undef
 	}
+	// getActorCode := func(a address.Address) cid.Cid {
+	// 	ra, found, err := initActorState.ResolveAddress(a)
+	// 	if err != nil || !found {
+	// 		return cid.Undef
+	// 	}
+
+	// 	c, ok := actorCodes[ra]
+	// 	if ok {
+	// 		return c
+	// 	}
+
+	// 	return cid.Undef
+	// }
 
 	// Build a lookup of which block headers indexed by their cid
 	blockHeaders := map[cid.Cid]*types.BlockHeader{}
@@ -404,7 +430,7 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 			FromActorCode: getActorCode(m.Message.From),
 			ToActorCode:   getActorCode(m.Message.To),
 		}
-		fmt.Println("em: fromAN:", builtin2.ActorNameByCode(em.FromActorCode), " toAN:", builtin2.ActorNameByCode(em.ToActorCode), " fromAC:", em.FromActorCode, " toAC: ", em.ToActorCode, " from: ", m.Message.From, " to: ", m.Message.To)
+		// fmt.Println("em: fromAN:", ActorNameByCode(em.FromActorCode), " toAN:", ActorNameByCode(em.ToActorCode), " fromAC:", em.FromActorCode, " toAC: ", em.ToActorCode, " from: ", m.Message.From, " to: ", m.Message.To)
 
 		burn, err := vmi.ShouldBurn(parentStateTree, m.Message, rcpts[index].ExitCode)
 		if err != nil {
@@ -466,14 +492,27 @@ func (a *apiBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error)
 func (a *apiBlockstore) HashOnRead(enabled bool) {
 }
 
-// ActorNameByCode returns the name of the actor code. Agnostic to the
-// version of specs-actors.
-func ActorNameByCode(code cid.Cid) string {
-	if name := builtin.ActorNameByCode(code); name != "<unknown>" {
-		return name
+func ActorNameByCode(c cid.Cid) string {
+	switch {
+	case builtin0.IsBuiltinActor(c):
+		return builtin0.ActorNameByCode(c)
+	case builtin2.IsBuiltinActor(c):
+		return builtin2.ActorNameByCode(c)
+	case builtin3.IsBuiltinActor(c):
+		return builtin3.ActorNameByCode(c)
+	default:
+		return "<unknown>"
 	}
-	if name := builtin2.ActorNameByCode(code); name != "<unknown>" {
-		return name
-	}
-	return builtin3.ActorNameByCode(code)
 }
+
+// // ActorNameByCode returns the name of the actor code. Agnostic to the
+// // version of specs-actors.
+// func ActorNameByCode(code cid.Cid) string {
+// 	if name := builtin.ActorNameByCode(code); name != "<unknown>" {
+// 		return name
+// 	}
+// 	if name := builtin2.ActorNameByCode(code); name != "<unknown>" {
+// 		return name
+// 	}
+// 	return builtin3.ActorNameByCode(code)
+// }

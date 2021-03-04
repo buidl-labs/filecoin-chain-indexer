@@ -17,11 +17,13 @@ type Message struct {
 	GasFeeCap  string `pg:",notnull"`
 	GasPremium string `pg:",notnull"`
 
-	GasLimit   int64  `pg:",use_zero"`
-	SizeBytes  int    `pg:",use_zero"`
-	Nonce      uint64 `pg:",use_zero"`
-	Method     uint64 `pg:",use_zero"`
-	MethodName string `pg:",notnull"`
+	GasLimit    int64  `pg:",use_zero"`
+	SizeBytes   int    `pg:",use_zero"`
+	Nonce       uint64 `pg:",use_zero"`
+	Method      uint64 `pg:",use_zero"`
+	MethodName  string `pg:",notnull"`
+	ParamsBytes []byte `pg:""`
+	Params      string `pg:""`
 }
 
 func (m *Message) Persist(ctx context.Context, s model.StorageBatch) error {
