@@ -47,6 +47,10 @@ func main() {
 	go func() {
 		log.Info(http.ListenAndServe("localhost:6060", nil))
 	}()
+	go func() {
+		http.Handle("/", http.FileServer(http.Dir(os.Getenv("SERVEDIR"))))
+		http.ListenAndServe(":80", nil)
+	}()
 	// from, _ := getenvInt("FROM")
 	// to, _ := getenvInt("TO")
 
