@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/buidl-labs/filecoin-chain-indexer/config"
 	"github.com/buidl-labs/filecoin-chain-indexer/db"
 	"github.com/buidl-labs/filecoin-chain-indexer/lens"
 	"github.com/buidl-labs/filecoin-chain-indexer/model"
@@ -40,9 +41,10 @@ type TipSetIndexer struct {
 	node            lens.API
 	opener          lens.APIOpener
 	closer          lens.APICloser
+	cfg             config.Config
 }
 
-func NewTipSetIndexer(o lens.APIOpener, db *sql.DB, store db.Store, s model.Storage, window time.Duration, name string, tasks []string) (*TipSetIndexer, error) {
+func NewTipSetIndexer(o lens.APIOpener, db *sql.DB, store db.Store, s model.Storage, window time.Duration, name string, tasks []string, cfg config.Config) (*TipSetIndexer, error) {
 	tsi := &TipSetIndexer{
 		db:              db,
 		store:           store,
@@ -53,6 +55,7 @@ func NewTipSetIndexer(o lens.APIOpener, db *sql.DB, store db.Store, s model.Stor
 		processors:      map[string]TipSetProcessor{},
 		actorProcessors: map[string]ActorProcessor{},
 		opener:          o,
+		cfg:             cfg,
 	}
 
 	for _, task := range tasks {
@@ -69,7 +72,7 @@ func NewTipSetIndexer(o lens.APIOpener, db *sql.DB, store db.Store, s model.Stor
 		case MinersTask:
 			tsi.processors[MinersTask] = NewMinerProcessor(o, store)
 		case MessagesTask:
-			tsi.processors[MessagesTask] = NewMessageProcessor(o, store)
+			tsi.processors[MessagesTask] = NewMessageProcessor(o, store, cfg)
 		case MarketsTask:
 			tsi.processors[MarketsTask] = NewMarketProcessor(o, store)
 		}

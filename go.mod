@@ -25,7 +25,10 @@ require (
 	github.com/gbrlsnchs/jwt/v3 v3.0.0 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/go-pg/pg/v10 v10.7.5
+	github.com/go-redis/redis v6.15.9+incompatible // indirect
+	github.com/go-redis/redis/v8 v8.4.4
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/gomodule/redigo v1.8.4
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -34,11 +37,12 @@ require (
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-ipld-cbor v0.0.5
 	github.com/ipfs/go-log/v2 v2.1.2-0.20200626104915-0016c0b4b3e4
-	github.com/ipld/go-ipld-prime v0.5.1-0.20201021195245-109253e8a018
 	github.com/lib/pq v1.9.0
 	github.com/libp2p/go-libp2p-core v0.8.0
 	github.com/magefile/mage v1.11.0 // indirect
 	github.com/multiformats/go-multiaddr v0.3.1
+	github.com/nitishm/go-rejson v2.0.0+incompatible // indirect
+	github.com/nitishm/go-rejson/v4 v4.0.0
 	github.com/polydawn/refmt v0.0.0-20201211092308-30ac6d18308e // indirect
 	github.com/pressly/goose v2.7.0+incompatible
 	github.com/prometheus/procfs v0.3.0 // indirect
@@ -49,14 +53,17 @@ require (
 	github.com/urfave/cli/v2 v2.3.0 // indirect
 	github.com/whyrusleeping/cbor-gen v0.0.0-20210118024343-169e9d70c0c2
 	go.opencensus.io v0.22.6 // indirect
-	// go.opentelemetry.io/otel v0.16.0
-	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
-	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
+	golang.org/x/lint v0.0.0-20201208152925-83fdc39ff7b5 // indirect
 	golang.org/x/mod v0.4.1 // indirect
-	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c // indirect
+	golang.org/x/net v0.0.0-20201224014010-6772e930b67b // indirect
+	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a // indirect
+	golang.org/x/sys v0.0.0-20210223095934-7937bea0104d // indirect
+	golang.org/x/text v0.3.4 // indirect
 	golang.org/x/tools v0.1.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
-	honnef.co/go/tools v0.0.1-2020.1.3 // indirect
+	google.golang.org/genproto v0.0.0-20210222152913-aa3ee6e6a81c // indirect
+	google.golang.org/grpc v1.35.0 // indirect
+	honnef.co/go/tools v0.0.1-2020.1.4 // indirect
 	howett.net/plist v0.0.0-20201203080718-1454fab16a06 // indirect
 )
 

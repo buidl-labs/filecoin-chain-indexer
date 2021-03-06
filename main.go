@@ -1,6 +1,7 @@
 package main
 
 import (
+	// "context"
 	"flag"
 	"net/http"
 	_ "net/http/pprof"
@@ -8,6 +9,9 @@ import (
 	"strconv"
 	"time"
 
+	// goredis "github.com/go-redis/redis/v8"
+	// "github.com/gomodule/redigo/redis"
+	// rejson "github.com/nitishm/go-rejson/v4"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/config"
@@ -28,17 +32,17 @@ func walk(cfg config.Config) {
 
 	// initial := []string{"init"}
 	msg := []string{"messages"}
-	blk := []string{"blocks"}
+	// blk := []string{"blocks"}
 	// minr := []string{"miners"}
-	mkt := []string{"markets"}
+	// mkt := []string{"markets"}
 	// err := services.Walk(cfg, initial, 1)
 	// if err != nil {
 	// 	log.Println("init task", err)
 	// }
 	go services.Walk(cfg, msg, 0) // taskType=0
-	go services.Walk(cfg, blk, 0) // taskType=0
+	// go services.Walk(cfg, blk, 0) // taskType=0
 	// go services.Walk(cfg, minr, 1) // taskType=1
-	go services.Walk(cfg, mkt, 1) // taskType=1
+	// go services.Walk(cfg, mkt, 1) // taskType=1
 
 	log.Info("\n\n\nDONE ONE ROUND\n\n\n")
 }
@@ -81,6 +85,7 @@ func main() {
 		To:              int64(sto),
 		Miner:           os.Getenv("MINERID"),
 		Epoch:           int64(epoch),
+		// RH:              rh,
 	}
 	log.Info("Starting filecoin-chain-indexer")
 

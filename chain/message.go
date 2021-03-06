@@ -1,20 +1,29 @@
 package chain
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
+
 	// builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+	// goredis "github.com/go-redis/redis/v8"
+	// "github.com/gomodule/redigo/redis"
+	// rejson "github.com/nitishm/go-rejson/v4"
 
 	// "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 	"github.com/ipfs/go-cid"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/xerrors"
 
+	"github.com/buidl-labs/filecoin-chain-indexer/config"
 	"github.com/buidl-labs/filecoin-chain-indexer/db"
 	"github.com/buidl-labs/filecoin-chain-indexer/lens"
 	"github.com/buidl-labs/filecoin-chain-indexer/lens/lotus"
@@ -28,9 +37,10 @@ type MessageProcessor struct {
 	closer     lens.APICloser
 	lastTipSet *types.TipSet
 	store      db.Store
+	cfg        config.Config
 }
 
-func NewMessageProcessor(opener lens.APIOpener, store db.Store) *MessageProcessor {
+func NewMessageProcessor(opener lens.APIOpener, store db.Store, cfg config.Config) *MessageProcessor {
 	return &MessageProcessor{
 		opener: opener,
 		store:  store,
@@ -204,11 +214,150 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 			Transferred:        computeTransferredAmount(m, lotus.ActorNameByCode(m.ToActorCode), p),
 			ActorName:          lotus.ActorNameByCode(m.ToActorCode),
 		}
-		_, err := p.store.DB.Model(transaction).Insert()
+
+		_, err = p.store.DB.Model(transaction).Insert()
 		if err != nil {
 			log.Info("insert txn", err)
 		} else {
 			// log.Info("inserted txn", r)
+			// successfully inserted to db
+			// Now index the owner/worker/control address changes if any
+			if transaction.ExitCode == 0 {
+				if transaction.Method == 3 && transaction.ActorName == "fil/3/storageminer" {
+					fmt.Println("THISISTHEDAY")
+					// change in worker/control addr
+					tts, _ := p.node.ChainGetTipSetByHeight(context.Background(), abi.ChainEpoch(transaction.Height), types.EmptyTSK)
+					nts, _ := p.node.ChainGetTipSetByHeight(context.Background(), abi.ChainEpoch(transaction.Height+1), types.EmptyTSK)
+					tmi, _ := p.node.StateMinerInfo(context.Background(), m.Message.To, tts.Key())
+					nmi, _ := p.node.StateMinerInfo(context.Background(), m.Message.To, nts.Key())
+					if !sameStringSlice(tmi.ControlAddresses, nmi.ControlAddresses) {
+						// control addr changed
+						jsonFile, err := os.Open(os.Getenv("ADDR_CHANGES"))
+						if err != nil {
+							return nil, nil, err
+						}
+						byteValue, _ := ioutil.ReadAll(jsonFile)
+						var minerAddressChanges map[string]MinerAddressChanges
+						json.Unmarshal(byteValue, &minerAddressChanges)
+						jsonFile.Close()
+						changedMiner := minerAddressChanges[m.Message.To.String()]
+						controlChanges := changedMiner.ControlChanges
+						var fromCAs []string
+						var toCAs []string
+						for _, ca := range tmi.ControlAddresses {
+							fromCAs = append(fromCAs, ca.String())
+						}
+						for _, ca := range nmi.ControlAddresses {
+							toCAs = append(toCAs, ca.String())
+						}
+						if len(fromCAs) == 0 {
+							fromCAs = make([]string, 0)
+						}
+						if len(toCAs) == 0 {
+							toCAs = make([]string, 0)
+						}
+						controlChanges = append(controlChanges, ControlChange{
+							Epoch: transaction.Height + 1,
+							From:  fromCAs,
+							To:    toCAs,
+						})
+						changedMiner.ControlChanges = controlChanges
+						minerAddressChanges[m.Message.To.String()] = changedMiner
+
+						mdata, err := json.MarshalIndent(minerAddressChanges, "", "	")
+						if err != nil {
+							fmt.Println("cant marshal")
+							return nil, nil, err
+						}
+						jsonStr := string(mdata)
+						f, err := os.OpenFile(os.Getenv("ADDR_CHANGES"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+						if err != nil {
+							return nil, nil, err
+						}
+						defer f.Close()
+						w := bufio.NewWriter(f)
+						n4, _ := w.WriteString(jsonStr)
+						fmt.Printf("wrote %d bytes\n", n4)
+						w.Flush()
+					} else {
+						// worker changed
+						jsonFile, err := os.Open(os.Getenv("ADDR_CHANGES"))
+						if err != nil {
+							return nil, nil, err
+						}
+						byteValue, _ := ioutil.ReadAll(jsonFile)
+						var minerAddressChanges map[string]MinerAddressChanges
+						json.Unmarshal(byteValue, &minerAddressChanges)
+						jsonFile.Close()
+						changedMiner := minerAddressChanges[m.Message.To.String()]
+						workerChanges := changedMiner.WorkerChanges
+						workerChanges = append(workerChanges, WorkerChange{
+							Epoch: transaction.Height + 900 + 1,
+							From:  tmi.Worker.String(),
+							To:    nmi.NewWorker.String(),
+						})
+						changedMiner.WorkerChanges = workerChanges
+						minerAddressChanges[m.Message.To.String()] = changedMiner
+
+						mdata, err := json.MarshalIndent(minerAddressChanges, "", "	")
+						if err != nil {
+							fmt.Println("cant marshal")
+							return nil, nil, err
+						}
+						jsonStr := string(mdata)
+						f, err := os.OpenFile(os.Getenv("ADDR_CHANGES"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+						if err != nil {
+							return nil, nil, err
+						}
+						defer f.Close()
+						w := bufio.NewWriter(f)
+						n4, _ := w.WriteString(jsonStr)
+						fmt.Printf("wrote %d bytes\n", n4)
+						w.Flush()
+					}
+				}
+				if transaction.Method == 23 && transaction.ActorName == "fil/3/storageminer" {
+					// change in owner addr
+					tts, _ := p.node.ChainGetTipSetByHeight(context.Background(), abi.ChainEpoch(transaction.Height), types.EmptyTSK)
+					nts, _ := p.node.ChainGetTipSetByHeight(context.Background(), abi.ChainEpoch(transaction.Height+1), types.EmptyTSK)
+					tmi, _ := p.node.StateMinerInfo(context.Background(), m.Message.To, tts.Key())
+					nmi, _ := p.node.StateMinerInfo(context.Background(), m.Message.To, nts.Key())
+
+					jsonFile, err := os.Open(os.Getenv("ADDR_CHANGES"))
+					if err != nil {
+						return nil, nil, err
+					}
+					byteValue, _ := ioutil.ReadAll(jsonFile)
+					var minerAddressChanges map[string]MinerAddressChanges
+					json.Unmarshal(byteValue, &minerAddressChanges)
+					jsonFile.Close()
+					changedMiner := minerAddressChanges[m.Message.To.String()]
+					ownerChanges := changedMiner.OwnerChanges
+					ownerChanges = append(ownerChanges, OwnerChange{
+						Epoch: transaction.Height + 1,
+						From:  tmi.Owner.String(),
+						To:    nmi.Owner.String(),
+					})
+					changedMiner.OwnerChanges = ownerChanges
+					minerAddressChanges[m.Message.To.String()] = changedMiner
+
+					mdata, err := json.MarshalIndent(minerAddressChanges, "", "	")
+					if err != nil {
+						fmt.Println("cant marshal")
+						return nil, nil, err
+					}
+					jsonStr := string(mdata)
+					f, err := os.OpenFile(os.Getenv("ADDR_CHANGES"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+					if err != nil {
+						return nil, nil, err
+					}
+					defer f.Close()
+					w := bufio.NewWriter(f)
+					n4, _ := w.WriteString(jsonStr)
+					fmt.Printf("wrote %d bytes\n", n4)
+					w.Flush()
+				}
+			}
 		}
 		transaction = nil
 		// transactionsResults = append(transactionsResults, transaction)
@@ -450,4 +599,54 @@ var verifiedRegistryMethods = map[abi.MethodNum]string{
 	builtin3.MethodsVerifiedRegistry.AddVerifiedClient: "AddVerifiedClient",
 	builtin3.MethodsVerifiedRegistry.UseBytes:          "UseBytes",
 	builtin3.MethodsVerifiedRegistry.RestoreBytes:      "RestoreBytes",
+}
+
+type OwnerChange struct {
+	Epoch int64  `json:"epoch,omitempty"`
+	From  string `json:"from,omitempty"`
+	To    string `json:"to,omitempty"`
+}
+
+type WorkerChange struct {
+	Epoch int64  `json:"epoch,omitempty"`
+	From  string `json:"from,omitempty"`
+	To    string `json:"to,omitempty"`
+}
+
+type ControlChange struct {
+	Epoch int64    `json:"epoch,omitempty"`
+	From  []string `json:"from,omitempty"`
+	To    []string `json:"to,omitempty"`
+}
+
+type MinerAddressChanges struct {
+	OwnerChanges   []OwnerChange   `json:"ownerChanges,omitempty"`
+	WorkerChanges  []WorkerChange  `json:"workerChanges,omitempty"`
+	ControlChanges []ControlChange `json:"controlChanges,omitempty"`
+}
+
+func sameStringSlice(x, y []address.Address) bool {
+	if len(x) != len(y) {
+		return false
+	}
+	// create a map of string -> int
+	diff := make(map[address.Address]int, len(x))
+	for _, _x := range x {
+		// 0 value for int is 0, so just increment a counter for the string
+		diff[_x]++
+	}
+	for _, _y := range y {
+		// If the string _y is not in diff bail out early
+		if _, ok := diff[_y]; !ok {
+			return false
+		}
+		diff[_y] -= 1
+		if diff[_y] == 0 {
+			delete(diff, _y)
+		}
+	}
+	if len(diff) == 0 {
+		return true
+	}
+	return false
 }

@@ -37,7 +37,7 @@ func Walk(cfg config.Config, tasks []string, taskType int) error {
 	}
 	db0, _ := store.Conn()
 	fmt.Println("gonna open TSIDXR")
-	tsIndexer, err := chain.NewTipSetIndexer(lensOpener, db0, *store, strg, 0, "somename", tasks)
+	tsIndexer, err := chain.NewTipSetIndexer(lensOpener, db0, *store, strg, 0, "somename", tasks, cfg)
 	if err != nil {
 		log.Info(tasks, " error: ", err)
 		return xerrors.Errorf("setup indexer: %w", err)
