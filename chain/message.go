@@ -281,39 +281,41 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 						w.Flush()
 					} else {
 						// worker changed
-						jsonFile, err := os.Open(os.Getenv("ADDR_CHANGES"))
-						if err != nil {
-							return nil, nil, err
-						}
-						byteValue, _ := ioutil.ReadAll(jsonFile)
-						var minerAddressChanges map[string]MinerAddressChanges
-						json.Unmarshal(byteValue, &minerAddressChanges)
-						jsonFile.Close()
-						changedMiner := minerAddressChanges[m.Message.To.String()]
-						workerChanges := changedMiner.WorkerChanges
-						workerChanges = append(workerChanges, WorkerChange{
-							Epoch: transaction.Height + 900 + 1,
-							From:  tmi.Worker.String(),
-							To:    nmi.NewWorker.String(),
-						})
-						changedMiner.WorkerChanges = workerChanges
-						minerAddressChanges[m.Message.To.String()] = changedMiner
+						if nmi.NewWorker.String() != "<empty>" {
+							jsonFile, err := os.Open(os.Getenv("ADDR_CHANGES"))
+							if err != nil {
+								return nil, nil, err
+							}
+							byteValue, _ := ioutil.ReadAll(jsonFile)
+							var minerAddressChanges map[string]MinerAddressChanges
+							json.Unmarshal(byteValue, &minerAddressChanges)
+							jsonFile.Close()
+							changedMiner := minerAddressChanges[m.Message.To.String()]
+							workerChanges := changedMiner.WorkerChanges
+							workerChanges = append(workerChanges, WorkerChange{
+								Epoch: transaction.Height + 900 + 1,
+								From:  tmi.Worker.String(),
+								To:    nmi.NewWorker.String(),
+							})
+							changedMiner.WorkerChanges = workerChanges
+							minerAddressChanges[m.Message.To.String()] = changedMiner
 
-						mdata, err := json.MarshalIndent(minerAddressChanges, "", "	")
-						if err != nil {
-							fmt.Println("cant marshal")
-							return nil, nil, err
+							mdata, err := json.MarshalIndent(minerAddressChanges, "", "	")
+							if err != nil {
+								fmt.Println("cant marshal")
+								return nil, nil, err
+							}
+							jsonStr := string(mdata)
+							f, err := os.OpenFile(os.Getenv("ADDR_CHANGES"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+							if err != nil {
+								return nil, nil, err
+							}
+							defer f.Close()
+							w := bufio.NewWriter(f)
+							n4, _ := w.WriteString(jsonStr)
+							fmt.Printf("wrote %d bytes\n", n4)
+							w.Flush()
 						}
-						jsonStr := string(mdata)
-						f, err := os.OpenFile(os.Getenv("ADDR_CHANGES"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
-						if err != nil {
-							return nil, nil, err
-						}
-						defer f.Close()
-						w := bufio.NewWriter(f)
-						n4, _ := w.WriteString(jsonStr)
-						fmt.Printf("wrote %d bytes\n", n4)
-						w.Flush()
 					}
 				}
 				if transaction.Method == 23 && transaction.ActorName == "fil/3/storageminer" {
