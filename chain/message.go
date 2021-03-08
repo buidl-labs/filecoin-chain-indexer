@@ -151,12 +151,23 @@ func (p *MessageProcessor) processExecutedMessages(ctx context.Context, ts, pts 
 			// })
 		}
 
+		var toID, fromID address.Address
+
+		toID, err = p.node.StateLookupID(context.Background(), m.Message.To, types.EmptyTSK)
+		if err != nil {
+			toID = m.Message.To
+		}
+		fromID, err = p.node.StateLookupID(context.Background(), m.Message.From, types.EmptyTSK)
+		if err != nil {
+			fromID = m.Message.From
+		}
+
 		// record all unique messages
 		msg := &messagemodel.Message{
 			Height:      int64(m.Height),
 			Cid:         m.Cid.String(),
-			From:        m.Message.From.String(),
-			To:          m.Message.To.String(),
+			From:        fromID.String(),
+			To:          toID.String(),
 			Value:       m.Message.Value.String(),
 			GasFeeCap:   m.Message.GasFeeCap.String(),
 			GasPremium:  m.Message.GasPremium.String(),
