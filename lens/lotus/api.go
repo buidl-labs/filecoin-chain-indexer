@@ -212,7 +212,7 @@ func (aw *APIWrapper) IndexActorCodes(ctx context.Context, ts *types.TipSet) err
 	w := bufio.NewWriter(f)
 	n4, _ := w.WriteString(jsonStr)
 	fmt.Printf("wrote %d bytes\n", n4)
-	fmt.Println("finish time:", time.Now())
+	fmt.Println("finish time:", time.Now(), " time difference:", time.Now().Sub(gotstatetree))
 	w.Flush()
 
 	// getActorCode := func(a address.Address) cid.Cid {

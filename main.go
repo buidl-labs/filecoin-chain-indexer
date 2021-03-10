@@ -77,6 +77,7 @@ func main() {
 		log.Fatal("Command is required")
 	}
 	epoch, _ := getenvInt("EPOCH")
+	forever, _ := getenvInt("FOREVER")
 	cfg := config.Config{
 		DBConnStr:       os.Getenv("DB"),
 		FullNodeAPIInfo: os.Getenv("FULLNODE_API_INFO"),
@@ -85,6 +86,7 @@ func main() {
 		To:              int64(sto),
 		Miner:           os.Getenv("MINERID"),
 		Epoch:           int64(epoch),
+		IndexForever:    forever,
 	}
 	log.Info("Starting filecoin-chain-indexer")
 
@@ -125,10 +127,10 @@ func main() {
 	case "actorcodes":
 		minerinfo := []string{"minerinfo"}
 		services.Walk(cfg, minerinfo, 1)
-		dayTicker := time.NewTicker(24 * time.Hour)
+		hourTicker := time.NewTicker(1 * time.Hour)
 		for {
 			select {
-			case <-dayTicker.C:
+			case <-hourTicker.C:
 				services.Walk(cfg, minerinfo, 1)
 			}
 		}

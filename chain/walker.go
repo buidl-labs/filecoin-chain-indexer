@@ -46,6 +46,7 @@ func (c *Walker) Run(ctx context.Context) error {
 	}
 	defer closer()
 
+	var mints, maxts *types.TipSet
 	ts, err := node.ChainHead(ctx)
 	if err != nil {
 		return xerrors.Errorf("get chain head: %w", err)
@@ -78,14 +79,19 @@ func (c *Walker) Run(ctx context.Context) error {
 
 		if int64(ts.Height()) > c.maxHeight {
 			log.Info("int64(ts.Height()) > c.maxHeight")
-			ts, err = node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(c.maxHeight), types.EmptyTSK)
+			maxts, err = node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(c.maxHeight), types.EmptyTSK)
 			if err != nil {
 				return xerrors.Errorf("get tipset by height: %w", err)
 			}
-			log.Info("ts by height", ts)
+			log.Info("maxts by height", maxts)
+			mints, err = node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(c.minHeight), types.EmptyTSK)
+			if err != nil {
+				return xerrors.Errorf("get tipset by height: %w", err)
+			}
+			log.Info("mints by height", mints)
 		}
 
-		if err := c.WalkChain(ctx, node, ts); err != nil {
+		if err := c.WalkChain(ctx, node, mints, maxts); err != nil {
 			return xerrors.Errorf("walk chain: %w", err)
 		}
 	}
@@ -93,18 +99,18 @@ func (c *Walker) Run(ctx context.Context) error {
 	return nil
 }
 
-func (c *Walker) WalkChain(ctx context.Context, node lens.API, ts *types.TipSet) error {
-	log.Info("in WalkChain", "found tipset", "height", ts.Height())
-	// go func(ts *types.TipSet, c *Walker) error {
-	// if err := c.obs.TipSet(ctx, ts); err != nil {
+func (c *Walker) WalkChain(ctx context.Context, node lens.API, mints, maxts *types.TipSet) error {
+	log.Info("in WalkChain", "found tipset", "height", maxts.Height())
+	// go func(maxts *types.TipSet, c *Walker) error {
+	// if err := c.obs.TipSet(ctx, maxts); err != nil {
 	// 	return xerrors.Errorf("notify tipset: %w", err)
 	// }
 	// return nil
-	// }(ts, c)
+	// }(maxts, c)
 
 	var err error
 	if c.tasks[0] == "minertxns" {
-		fmt.Println("minertxnstask ", ts.Height())
+		fmt.Println("minertxnstask ", maxts.Height())
 		x := 120
 		var wg sync.WaitGroup
 		l := int(c.maxHeight - c.minHeight) // + 1
@@ -130,25 +136,52 @@ func (c *Walker) WalkChain(ctx context.Context, node lens.API, ts *types.TipSet)
 		wg2.Wait()
 
 	} else {
-		if err := c.obs.TipSet(ctx, ts); err != nil {
-			return xerrors.Errorf("notify tipset: %w", err)
-		}
+		if c.cfg.IndexForever == 1 {
+			fmt.Println("min", mints.Height(), "max", maxts.Height())
+			fmt.Println("mhh", c.minHeight)
+			// do forward indexing in this case
 
-		for int64(ts.Height()) >= c.minHeight && ts.Height() > 0 {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-			}
-
-			ts, err = node.ChainGetTipSet(ctx, ts.Parents())
-			if err != nil {
-				return xerrors.Errorf("get tipset: %w", err)
-			}
-
-			log.Info("found tipset", "height", ts.Height())
-			if err := c.obs.TipSet(ctx, ts); err != nil {
+			if err := c.obs.TipSet(ctx, mints); err != nil {
 				return xerrors.Errorf("notify tipset: %w", err)
+			}
+			currTs := mints
+			for int64(currTs.Height()) >= c.minHeight {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				default:
+				}
+				currTs, err = node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(currTs.Height()+1), types.EmptyTSK)
+				if err != nil {
+					return xerrors.Errorf("get next tipset: %w", err)
+				}
+
+				log.Info("found tipset", "height", currTs.Height())
+				if err := c.obs.TipSet(ctx, currTs); err != nil {
+					return xerrors.Errorf("notify tipset: %w", err)
+				}
+			}
+		} else {
+			if err := c.obs.TipSet(ctx, maxts); err != nil {
+				return xerrors.Errorf("notify tipset: %w", err)
+			}
+
+			for int64(maxts.Height()) >= c.minHeight && maxts.Height() > 0 {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				default:
+				}
+
+				maxts, err = node.ChainGetTipSet(ctx, maxts.Parents())
+				if err != nil {
+					return xerrors.Errorf("get tipset: %w", err)
+				}
+
+				log.Info("found tipset", "height", maxts.Height())
+				if err := c.obs.TipSet(ctx, maxts); err != nil {
+					return xerrors.Errorf("notify tipset: %w", err)
+				}
 			}
 		}
 	}

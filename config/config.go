@@ -15,4 +15,5 @@ type Config struct {
 	Miner           string
 	Epoch           int64
 	RH              *rejson.Handler
+	IndexForever    int
 }
