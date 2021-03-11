@@ -46,6 +46,7 @@ require (
 	github.com/polydawn/refmt v0.0.0-20201211092308-30ac6d18308e // indirect
 	github.com/pressly/goose v2.7.0+incompatible
 	github.com/prometheus/procfs v0.3.0 // indirect
+	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shirou/gopsutil v3.21.1+incompatible // indirect
 	github.com/sirupsen/logrus v1.7.0

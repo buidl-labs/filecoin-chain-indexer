@@ -12,6 +12,7 @@ import (
 
 	"github.com/buidl-labs/filecoin-chain-indexer/config"
 	"github.com/buidl-labs/filecoin-chain-indexer/services"
+	"github.com/rs/cors"
 )
 
 func walk(cfg config.Config) {
@@ -48,8 +49,9 @@ func main() {
 		log.Info(http.ListenAndServe("localhost:6060", nil))
 	}()
 	go func() {
-		http.Handle("/", http.FileServer(http.Dir(os.Getenv("SERVEDIR"))))
-		http.ListenAndServe(":80", nil)
+		handler := cors.Default().Handler(http.FileServer(http.Dir(os.Getenv("SERVEDIR"))))
+		http.Handle("/", handler)
+		http.ListenAndServe(":80", handler)
 	}()
 	// from, _ := getenvInt("FROM")
 	// to, _ := getenvInt("TO")
