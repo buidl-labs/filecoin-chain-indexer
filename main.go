@@ -100,15 +100,11 @@ func main() {
 		}
 	case "index":
 		walk(cfg)
-		// minuteTicker := time.NewTicker(60 * time.Second)
-		minuteTicker := time.NewTicker(24 * time.Hour)
-		dayTicker := time.NewTicker(24 * time.Hour)
+		ticker := time.NewTicker(6 * time.Hour)
 		for {
 			select {
-			case <-minuteTicker.C:
+			case <-ticker.C:
 				walk(cfg)
-			case <-dayTicker.C:
-				getDailyData(cfg)
 			}
 		}
 	case "minerinit":
@@ -135,6 +131,29 @@ func main() {
 			case <-hourTicker.C:
 				services.Walk(cfg, minerinfo, 1)
 			}
+		}
+	case "blocks":
+		blk := []string{"blocks"}
+		services.Walk(cfg, blk, 0) // taskType=0
+		ticker := time.NewTicker(6 * time.Hour)
+		for {
+			select {
+			case <-ticker.C:
+				services.Walk(cfg, blk, 0) // taskType=0
+			}
+		}
+	case "messages":
+		msg := []string{"messages"}
+		services.Walk(cfg, msg, 0) // taskType=0
+		ticker := time.NewTicker(6 * time.Hour)
+		for {
+			select {
+			case <-ticker.C:
+				services.Walk(cfg, msg, 0) // taskType=0
+			}
+		}
+	case "n":
+		for {
 		}
 	default:
 		log.Fatal("Please use a valid command")
