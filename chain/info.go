@@ -1,13 +1,15 @@
 package chain
 
 import (
+	"bufio"
 	"context"
 	"fmt"
-	// "os"
+	"os"
+	// "reflect"
 
+	// "github.com/filecoin-project/go-address"
 	// "github.com/ipfs/go-cid"
 	// log "github.com/sirupsen/logrus"
-	// "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"golang.org/x/xerrors"
 
@@ -51,10 +53,52 @@ func (p *MinerInfoProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet
 	err = p.node.IndexActorCodes(context.Background(), headts)
 	if err != nil {
 		fmt.Println("idxactorcodes", err)
+	} else {
+		f, err := os.OpenFile(os.Getenv("ACS_PARSEDTILL"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+		if err != nil {
+			return data, err
+		}
+		defer f.Close()
+		w := bufio.NewWriter(f)
+		fmt.Println("acsPT", headts.Height().String())
+		n4, _ := w.WriteString(headts.Height().String())
+		fmt.Printf("wrote %d bytes\n", n4)
+		w.Flush()
+
 	}
 	/*
 		tsk := ts.Key()
+		mcid, _ := cid.Decode("bafy2bzacebw6mkswfff7j4luirtzje4awo33vbymuuq7a4z6pcujgi2ih3wdi")
+		// mcid, _ := cid.Decode("bafy2bzacedcc56isnoi5iaeddugjcfynktpdyujqvdrhngdpgnfzutk7sos4a")
+		mmsg, _ := p.node.ChainGetMessage(context.Background(), mcid)
+		dmsg, _ := types.DecodeMessage(mmsg.Params)
+		sadr, _ := address.NewFromString("f0151849") //"f0241858")//
+		mintf, _ := p.node.StateDecodeParams(context.Background(), sadr, 16, mmsg.Params, types.EmptyTSK)
+		// mintf, _ := p.node.StateDecodeParams(context.Background(), sadr, 6, mmsg.Params, types.EmptyTSK)
+		fmt.Println("Mmsg", mmsg.Value, mmsg.ValueReceived(), mmsg.VMMessage(), mmsg.Params, dmsg)
+		fmt.Println("mintf", mintf)
+
+		mintfstr := fmt.Sprintf("%v", mintf)
+		fmt.Println("mintstr", mintfstr, reflect.TypeOf(mintfstr))
+		d := mintf.(map[string]interface{})
+		fmt.Println("areq: ", d["AmountRequested"])
+		// fmt.Println(string(mintf))
+		ar := d["AmountRequested"].(string)
+		fmt.Println("updarstr: ", ar, " is a: ", reflect.TypeOf(ar))
+		// switch v := mintf.(type) {
+		// case map[string]string:
+		// 	for s, b := range v {
+		// 		fmt.Printf("k: %s, v:%s\n", s, b)
+		// 	}
+		// 	fmt.Println("et", v)
+		// default:
+		// 	fmt.Println("vt", v)
+		// }
+		// if mintf.(type) == reflect.Map {
+		// 	fmt.Println("imma map")
+		// }
 		log.Info("minerinfotsk", tsk, " ht ", ts.Height())
+		// addrStr := "f01248"// "f0167254"//
 		addrStr := os.Getenv("MINERID")
 		addr, err := address.NewFromString(addrStr)
 		if err != nil {
@@ -71,8 +115,9 @@ func (p *MinerInfoProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet
 			" workerchangeepoch:", mif.WorkerChangeEpoch,
 			" newworker:", mif.NewWorker, " maddrs:", mif.Multiaddrs)
 
-		// bcid, err := cid.Decode("bafy2bzacebikmwwxrtrwvjru62snnz6wwtd5le73pk4b5ksixnuawdxyiem24")
-		bcid, err := cid.Decode("bafy2bzacect2j3h2swq2tcsxjuk6pn66ng5iptph3ez5e6a6qks7y37p7d3jw")
+		bcid, err := cid.Decode("bafy2bzacecvfricp46fvh22kcj3y7acaxl77slxw5xhm4kzvxidbpitkz4phk")
+		// bcid, err := cid.Decode("bafy2bzacect2j3h2swq2tcsxjuk6pn66ng5iptph3ez5e6a6qks7y37p7d3jw")
+		// bcid, err := cid.Decode("bafy2bzaced3ganthknkxiyji4m4dm7fu42cftykn3mugvdydzdrexknfhjahs")
 		if err != nil {
 			fmt.Println("cant parse cid")
 		}
@@ -81,7 +126,7 @@ func (p *MinerInfoProcessor) ProcessTipSet(ctx context.Context, ts *types.TipSet
 		if err != nil {
 			fmt.Println("cant mllokup")
 		}
-		fmt.Println("mlup", mlup.Height)
+		fmt.Println("mlup", mlup.Height, mlup.Receipt.ExitCode, mlup.Receipt.Return)
 		// msgs, err := p.node.ChainGetParentMessages(context.Background(), ts.Cids()[0])
 		// if err != nil {
 		// 	return nil, xerrors.Errorf("get parent messages: %w", err)

@@ -3,6 +3,9 @@ package chain
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"strconv"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -140,26 +143,73 @@ func (c *Walker) WalkChain(ctx context.Context, node lens.API, mints, maxts *typ
 			fmt.Println("min", mints.Height(), "max", maxts.Height())
 			fmt.Println("mhh", c.minHeight)
 			// do forward indexing in this case
-
+			maxheightB, err := ioutil.ReadFile(os.Getenv("ACS_PARSEDTILL"))
+			if err != nil {
+				return xerrors.Errorf("read acsparsedtill: %w", err)
+			}
+			maxheightStr := string(maxheightB)
+			fmt.Println("MAXHEIGHTSTR", maxheightStr)
+			maxheight, _ := strconv.ParseInt(maxheightStr, 10, 64)
+			fmt.Println("MAXHEIGHT", maxheight)
+			// maxheight -= 900
+			// if mints != nil {
+			// 	fmt.Println("mints not null, lenblocks:", len(mints.Blocks()))
+			// } else {
+			// 	fmt.Println("mints null")
+			// }
+			// ooldHt := mints.Height()
+			for mints.Height() < abi.ChainEpoch(c.minHeight) {
+				mints, err = node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(mints.Height()+2), types.EmptyTSK)
+				if err != nil {
+					return xerrors.Errorf("get next mintipset: %w", err)
+				}
+			}
+			fmt.Println("nowmintsh", mints.Height())
 			if err := c.obs.TipSet(ctx, mints); err != nil {
 				return xerrors.Errorf("notify tipset: %w", err)
 			}
+			fmt.Println("beforeinl")
 			currTs := mints
-			for int64(currTs.Height()) >= c.minHeight {
+			fmt.Println("sksjaksja", currTs.Height())
+			for int64(currTs.Height()) >= c.minHeight && int64(currTs.Height()) <= maxheight-900 {
+				fmt.Println("jinloop")
 				select {
 				case <-ctx.Done():
 					return ctx.Err()
 				default:
 				}
+				fmt.Println("inloopas")
+				oldHt := currTs.Height()
 				currTs, err = node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(currTs.Height()+1), types.EmptyTSK)
 				if err != nil {
+					fmt.Println("ctse", err)
 					return xerrors.Errorf("get next tipset: %w", err)
 				}
 
 				log.Info("found tipset", "height", currTs.Height())
+
+				// Skip empty tipset
+				// For example, tipset 563097 in mainnet
+				for currTs.Height() == oldHt {
+					log.Info("currtsHt == oldHt", oldHt)
+					currTs, err = node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(currTs.Height()+2), types.EmptyTSK)
+					if err != nil {
+						return xerrors.Errorf("get next tipset: %w", err)
+					}
+				}
 				if err := c.obs.TipSet(ctx, currTs); err != nil {
 					return xerrors.Errorf("notify tipset: %w", err)
 				}
+
+				// update maxheight to latest value of ACS_PARSEDTILL
+				maxheightB, err := ioutil.ReadFile(os.Getenv("ACS_PARSEDTILL"))
+				if err != nil {
+					return xerrors.Errorf("read acsparsedtill: %w", err)
+				}
+				maxheightStr := string(maxheightB)
+				maxheight, _ = strconv.ParseInt(maxheightStr, 10, 64)
+				fmt.Println("updated maxheight", maxheight)
+				// maxheight -= 900
 			}
 		} else {
 			if err := c.obs.TipSet(ctx, maxts); err != nil {
