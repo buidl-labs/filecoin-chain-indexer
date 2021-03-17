@@ -20,3 +20,6 @@ main
 filecoin-chain-indexer
 .vscode/
 .env
+*.json
+!actorCodes.json
+!servedir/*.json

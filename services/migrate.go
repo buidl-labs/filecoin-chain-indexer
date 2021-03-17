@@ -8,7 +8,6 @@ import (
 
 func RunMigrations(cfg config.Config, cmd string) error {
 	store, err := db.New(cfg.DBConnStr)
-	// store, err := initStore(cfg)
 	if err != nil {
 		return err
 	}

@@ -8,14 +8,16 @@ import (
 
 	"github.com/filecoin-project/lotus/api/client"
 	lru "github.com/hashicorp/golang-lru"
+	logging "github.com/ipfs/go-log/v2"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/xerrors"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/config"
 	"github.com/buidl-labs/filecoin-chain-indexer/lens"
 )
+
+var log = logging.Logger("lens/lotus")
 
 type APIOpener struct {
 	cache   *lru.ARCCache
@@ -32,7 +34,6 @@ func NewAPIOpener(cfg config.Config, cctx context.Context) (*APIOpener, lens.API
 	var rawaddr, rawtoken string
 
 	tokenMaddr := cfg.FullNodeAPIInfo
-	log.Info("tokenmaddr: ", tokenMaddr)
 	toks := strings.Split(tokenMaddr, ":")
 	if len(toks) != 2 {
 		return nil, nil, xerrors.Errorf("invalid api tokens, expected <token>:<maddr>, got: %s", tokenMaddr)
@@ -46,11 +47,12 @@ func NewAPIOpener(cfg config.Config, cctx context.Context) (*APIOpener, lens.API
 		return nil, nil, xerrors.Errorf("parse listen address: %w", err)
 	}
 
-	_, addr, err := manet.DialArgs(parsedAddr)
+	_, _, err = manet.DialArgs(parsedAddr)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("dial multiaddress: %w", err)
 	}
-	log.Info("addr: ", addr, " rawtoken: ", rawtoken)
+	_ = rawtoken
+
 	o := &APIOpener{
 		cache: ac,
 		// addr:    apiURI(addr),
@@ -63,21 +65,17 @@ func NewAPIOpener(cfg config.Config, cctx context.Context) (*APIOpener, lens.API
 }
 
 func (o *APIOpener) Open(ctx context.Context) (lens.API, lens.APICloser, error) {
-	log.Info("before open")
 	api, closer, err := client.NewFullNodeRPC(ctx, o.addr, o.headers)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("new full node rpc: %w", err)
 	}
-	log.Info("FNRPC")
 
 	cacheStore, err := NewCacheCtxStore(ctx, api, o.cache)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("new cache store: %w", err)
 	}
-	log.Info("Cachestore")
 
 	lensAPI := NewAPIWrapper(api, cacheStore)
-	log.Info("apiwrap")
 
 	return lensAPI, lens.APICloser(closer), nil
 }
