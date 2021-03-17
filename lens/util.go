@@ -9,11 +9,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 )
-
-var logger = logging.Logger("visor/lens/lotus")
 
 // OptimizedStateGetActorWithFallback is a helper to obtain an actor in the
 // state of the current tipset without recomputing the full tipset. It does

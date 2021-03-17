@@ -4,9 +4,9 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -16,7 +16,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -96,6 +99,10 @@ func (aw *APIWrapper) StateListActors(ctx context.Context, tsk types.TipSetKey) 
 	return aw.FullNode.StateListActors(ctx, tsk)
 }
 
+func (aw *APIWrapper) StateListMessages(ctx context.Context, match *api.MessageMatch, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error) {
+	return aw.FullNode.StateListMessages(ctx, match, tsk, toht)
+}
+
 func (aw *APIWrapper) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]api.MarketDeal, error) {
 	return aw.FullNode.StateMarketDeals(ctx, tsk)
 }
@@ -128,20 +135,69 @@ func (aw *APIWrapper) StateMinerAvailableBalance(ctx context.Context, addr addre
 	return aw.FullNode.StateMinerAvailableBalance(ctx, addr, tsk)
 }
 
-// func (aw *APIWrapper) StateMinerDeadlines(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]api.Deadline, error) {
-// 	return aw.FullNode.StateMinerDeadlines(ctx, addr, tsk)
-// }
-
 func (aw *APIWrapper) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
 	return aw.FullNode.StateReadState(ctx, actor, tsk)
 }
 
-// func (aw *APIWrapper) ComputeGasOutputs(gasUsed, gasLimit int64, baseFee, feeCap, gasPremium abi.TokenAmount) vm.GasOutputs {
-// 	return vm.ComputeGasOutputs(gasUsed, gasLimit, baseFee, feeCap, gasPremium)
-// }
+func (aw *APIWrapper) StateSearchMsg(ctx context.Context, bcid cid.Cid) (*api.MsgLookup, error) {
+	return aw.FullNode.StateSearchMsg(ctx, bcid)
+}
+
+func (aw *APIWrapper) StateDecodeParams(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error) {
+	return aw.FullNode.StateDecodeParams(ctx, toAddr, method, params, tsk)
+}
 
 func (aw *APIWrapper) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
 	return aw.FullNode.StateVMCirculatingSupplyInternal(ctx, tsk)
+}
+
+func (aw *APIWrapper) IndexActorCodes(ctx context.Context, ts *types.TipSet) error {
+	start := time.Now()
+	log.Infow("index actorcodes", "start", start)
+
+	stateTree, err := state.LoadStateTree(aw.Store(), ts.ParentState())
+	if err != nil {
+		return xerrors.Errorf("load state tree: %w", err)
+	}
+
+	gotstatetree := time.Now()
+	log.Infow("index actorcodes", "gotstatetree", gotstatetree)
+
+	// Build a lookup of actor codes
+	actorCodesStr := map[string]string{}
+	actorCodes := map[address.Address]cid.Cid{}
+	if err := stateTree.ForEach(func(a address.Address, act *types.Actor) error {
+		actorCodes[a] = act.Code
+		actorCodesStr[a.String()] = act.Code.String()
+		return nil
+	}); err != nil {
+		return xerrors.Errorf("iterate actors: %w", err)
+	}
+	createacmap := time.Now()
+	log.Infow("index actorcodes", "createacmap", createacmap)
+
+	actorCodesData, err := json.Marshal(actorCodesStr)
+	if err != nil {
+		return xerrors.Errorf("json.Marshal: %w", err)
+	}
+	jsonStr := string(actorCodesData)
+
+	f, err := os.OpenFile(os.Getenv("ACTOR_CODES_JSON"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		return xerrors.Errorf("opening ACTOR_CODES_JSON: %w", err)
+	}
+	defer f.Close()
+	w := bufio.NewWriter(f)
+	bytesCount, err := w.WriteString(jsonStr)
+	w.Flush()
+
+	log.Infow("index actorcodes",
+		"completed at", time.Now(),
+		"time taken", time.Now().Sub(start),
+		"number of bytes", bytesCount,
+	)
+
+	return nil
 }
 
 // GetExecutedMessagesForTipset returns a list of messages sent as part of pts (parent) with receipts found in ts (child).
@@ -151,29 +207,29 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 		return nil, xerrors.Errorf("child tipset (%s) is not on the same chain as parent (%s)", ts.Key(), pts.Key())
 	}
 
-	fmt.Println("gonnacall LST")
-	stateTree, err := state.LoadStateTree(aw.Store(), ts.ParentState())
-	if err != nil {
-		return nil, xerrors.Errorf("load state tree: %w", err)
-	}
-	fmt.Println("LST", stateTree)
+	// stateTree, err := state.LoadStateTree(aw.Store(), ts.ParentState())
+	// if err != nil {
+	// 	return nil, xerrors.Errorf("load state tree: %w", err)
+	// }
 
 	parentStateTree, err := state.LoadStateTree(aw.Store(), pts.ParentState())
 	if err != nil {
 		return nil, xerrors.Errorf("load parent state tree: %w", err)
 	}
 
-	actorAddresses, err := aw.FullNode.StateListActors(ctx, ts.Key())
 	// TODO: load from db (or some key-value store)
 	// Listen for new actors and insert them into the store
 	// Doing this since loading actors from state tree is time consuming.
-	plan, _ := ioutil.ReadFile(os.Getenv("ACTOR_CODES_JSON"))
+	plan, err := ioutil.ReadFile(os.Getenv("ACTOR_CODES_JSON"))
+	if err != nil {
+		return nil, xerrors.Errorf("reading ACTOR_CODES_JSON: %w", err)
+	}
 	var results map[string]string // address.Address]cid.Cid
 	err = json.Unmarshal([]byte(plan), &results)
 	if err != nil {
 		return nil, xerrors.Errorf("load actorCodes: %w", err)
 	}
-	// fmt.Println("HII", "f099", results["f099"])
+
 	actorCodes := map[address.Address]cid.Cid{}
 	actorCodesStr := map[string]string{}
 	for k, v := range results {
@@ -182,72 +238,6 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 		c, _ := cid.Decode(v)
 		actorCodes[a] = c
 	}
-	fmt.Println("lenac ", len(actorCodes), "lenaddrs", len(actorAddresses))
-	if len(actorCodes) != len(actorAddresses) {
-		c := 0
-		for _, addr := range actorAddresses {
-			if _, ok := actorCodes[addr]; !ok {
-				// fmt.Println("not yet", addr)
-				act, err := aw.FullNode.StateGetActor(ctx, addr, ts.Key())
-				if err != nil {
-					fmt.Println("stategetactor", err)
-				} else {
-					fmt.Println("addr ", addr, " actc", act.Code)
-					actorCodes[addr] = act.Code
-					actorCodesStr[addr.String()] = act.Code.String()
-				}
-				c++
-				//do something here
-			} else {
-				fmt.Println("no issues")
-			}
-		}
-		fmt.Println("COUNTER", c)
-		fmt.Println("NEWACTLEN: ", len(actorCodes), " str: ", len(actorCodesStr))
-		actorCodesData, err := json.Marshal(actorCodesStr)
-		if err != nil {
-			fmt.Println(err)
-			return nil, xerrors.Errorf("json.Marshal: %w", err)
-		}
-		jsonStr := string(actorCodesData)
-		f, _ := os.Create(os.Getenv("ACTOR_CODES_JSON"))
-		defer f.Close()
-		w := bufio.NewWriter(f)
-		n4, _ := w.WriteString(jsonStr)
-		fmt.Printf("wrote %d bytes\n", n4)
-		w.Flush()
-	}
-
-	// Build a lookup of actor codes
-	/*
-		actorCodes := map[address.Address]cid.Cid{}
-		actorCodesStr := map[string]string{}
-		if err := stateTree.ForEach(func(a address.Address, act *types.Actor) error {
-			actorCodes[a] = act.Code
-			actorCodesStr[a.String()] = act.Code.String()
-			fmt.Println("somerr1", err, a, act.Code)
-			return nil
-		}); err != nil {
-			fmt.Println("somerr2", err)
-			return nil, xerrors.Errorf("iterate actors: %w", err)
-		}
-		actorCodesData, err := json.Marshal(actorCodesStr)
-		if err != nil {
-			fmt.Println(err)
-			return nil, xerrors.Errorf("json.Marshal: %w", err)
-		}
-		jsonStr := string(actorCodesData)
-		fmt.Println("jsonStr", jsonStr)
-
-		currentTime := time.Now()
-		dt := currentTime.Format("2006-01-02")
-		f, _ := os.Create("/var/data/actorCodes " + dt + ".json")
-		defer f.Close()
-		w := bufio.NewWriter(f)
-		n4, _ := w.WriteString(jsonStr)
-		fmt.Printf("wrote %d bytes\n", n4)
-		w.Flush()
-	*/
 
 	getActorCode := func(a address.Address) cid.Cid {
 		c, ok := actorCodes[a]
@@ -283,7 +273,6 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 	if err != nil {
 		return nil, xerrors.Errorf("get parent messages: %w", err)
 	}
-	fmt.Println("MSGs", msgs)
 
 	// Get receipts for parent messages
 	rcpts, err := aw.ChainGetParentReceipts(ctx, ts.Cids()[0])
@@ -380,4 +369,17 @@ func (a *apiBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error)
 }
 
 func (a *apiBlockstore) HashOnRead(enabled bool) {
+}
+
+func ActorNameByCode(c cid.Cid) string {
+	switch {
+	case builtin0.IsBuiltinActor(c):
+		return builtin0.ActorNameByCode(c)
+	case builtin2.IsBuiltinActor(c):
+		return builtin2.ActorNameByCode(c)
+	case builtin3.IsBuiltinActor(c):
+		return builtin3.ActorNameByCode(c)
+	default:
+		return "<unknown>"
+	}
 }

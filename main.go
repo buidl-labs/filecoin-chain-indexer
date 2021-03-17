@@ -5,67 +5,84 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"strconv"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/rs/cors"
 
+	"github.com/buidl-labs/filecoin-chain-indexer/chain"
 	"github.com/buidl-labs/filecoin-chain-indexer/config"
 	"github.com/buidl-labs/filecoin-chain-indexer/services"
+	"github.com/buidl-labs/filecoin-chain-indexer/util"
 )
 
-func walk(cfg config.Config) {
-	// allEpochsTasks := []string{"messages", "blocks"}
-	// err := services.Walk(cfg, allEpochsTasks, 0) // taskType=0
-	// if err != nil {
-	// 	log.Println("services.walk: allEpochsTasks", err)
-	// }
-	// currentEpochTasks := []string{"miners", "markets"}
-	// err = services.Walk(cfg, currentEpochTasks, 1) // taskType=1
-	// if err != nil {
-	// 	log.Println("services.walk: currentEpochTasks", err)
-	// }
-
-	// initial := []string{"init"}
-	msg := []string{"messages"}
-	blk := []string{"blocks"}
-	// minr := []string{"miners"}
-	mkt := []string{"markets"}
-	// err := services.Walk(cfg, initial, 1)
-	// if err != nil {
-	// 	log.Println("init task", err)
-	// }
-	go services.Walk(cfg, msg, 0)  // taskType=0
-	go services.Walk(cfg, blk, 0)  // taskType=0
-	// go services.Walk(cfg, minr, 1) // taskType=1
-	go services.Walk(cfg, mkt, 1) // taskType=1
-
-	log.Info("\n\n\nDONE ONE ROUND\n\n\n")
-}
+var log = logging.Logger("main")
 
 func main() {
+	if err := logging.SetLogLevel("*", "debug"); err != nil {
+		log.Fatalf("set log level: %w", err)
+	}
+	if err := logging.SetLogLevel("rpc", "error"); err != nil {
+		log.Fatalf("set rpc log level: %w", err)
+	}
+	if err := logging.SetLogLevel("bufbs", "error"); err != nil {
+		log.Fatalf("set bufbs log level: %w", err)
+	}
+
 	go func() {
-		log.Info(http.ListenAndServe("localhost:6060", nil))
+		log.Info(http.ListenAndServe(":6060", nil))
 	}()
-	from, _ := getenvInt("FROM")
-	to, _ := getenvInt("TO")
+
+	// log.Infow("infoout of order tipsets",
+	// 	"height", 3,
+	// )
+	// log.Info("doin nothin")
+	// log.Infof("ksdjd %s", "skj")
+	// log.Debugw("debugout of order tipsets", "height", 1)
+	// log.Errorw("errorout of order tipsets", "height", 2)
+
+	go func() {
+		handler := cors.Default().Handler(http.FileServer(http.Dir(os.Getenv("SERVEDIR"))))
+		http.Handle("/", handler)
+		http.ListenAndServe(":80", handler)
+	}()
+
+	var command string
+	var sfrom int
+	var sto int
+
+	fromenv, _ := util.GetenvInt("FROM")
+	toenv, _ := util.GetenvInt("TO")
+	flag.StringVar(&command, "cmd", "", "Command to run")
+	flag.IntVar(&sfrom, "from", fromenv, "from height")
+	flag.IntVar(&sto, "to", toenv, "to height")
+	flag.Parse()
+
+	if command == "" {
+		log.Fatal("Please use a valid command")
+	}
+
+	epoch, _ := util.GetenvInt("EPOCH")
+	forever, _ := util.GetenvInt("FOREVER")
+
+	if sfrom == -1 {
+		log.Fatal("Please specify a valid FROM epoch")
+	}
+	if sto == -1 && forever != 1 {
+		log.Fatal("Please specify a valid TO epoch")
+	}
 
 	cfg := config.Config{
 		DBConnStr:       os.Getenv("DB"),
 		FullNodeAPIInfo: os.Getenv("FULLNODE_API_INFO"),
 		CacheSize:       1, // TODO: Not using chain cache ATM
-		From:            int64(from),
-		To:              int64(to),
+		From:            int64(sfrom),
+		To:              int64(sto),
+		Miner:           os.Getenv("MINERID"),
+		Epoch:           int64(epoch),
+		IndexForever:    forever,
 	}
 	log.Info("Starting filecoin-chain-indexer")
-
-	var command string
-
-	flag.StringVar(&command, "cmd", "", "Command to run")
-	flag.Parse()
-	if command == "" {
-		log.Fatal("Command is required")
-	}
 
 	switch command {
 	case "migrate", "rollback":
@@ -73,35 +90,56 @@ func main() {
 		if err != nil {
 			log.Fatal("Running migrations", err)
 		}
-	case "index":
-		walk(cfg)
-		// minuteTicker := time.NewTicker(60 * time.Second)
-		minuteTicker := time.NewTicker(24 * time.Hour)
-		dayTicker := time.NewTicker(24 * time.Hour)
+	case chain.MinerTxnsTask:
+		minertxns := []string{chain.MinerTxnsTask}
+		start := time.Now()
+		log.Debugw("MinerTxnsTask", "start", start)
+		services.Walk(cfg, minertxns, chain.EPOCHS_RANGE, chain.MinerTxnsTask)
+		end := time.Now()
+		log.Debugw("MinerTxnsTask", "end", end)
+		diff := end.Sub(start)
+		log.Debugw("MinerTxnsTask", "total time", diff)
+	case chain.ActorCodesTask:
+		actorcodes := []string{chain.ActorCodesTask}
+		for {
+			services.Walk(cfg, actorcodes, chain.SINGLE_EPOCH, chain.ActorCodesTask)
+		}
+	case chain.MinersTask:
+		minr := []string{chain.MinersTask}
+		for {
+			services.Walk(cfg, minr, chain.SINGLE_EPOCH, chain.MinersTask)
+		}
+	case chain.BlocksTask:
+		blk := []string{chain.BlocksTask}
+		services.Walk(cfg, blk, chain.EPOCHS_RANGE, chain.BlocksTask)
+		ticker := time.NewTicker(6 * time.Hour)
 		for {
 			select {
-			case <-minuteTicker.C:
-				walk(cfg)
-			case <-dayTicker.C:
-				getDailyData(cfg)
+			case <-ticker.C:
+				services.Walk(cfg, blk, chain.EPOCHS_RANGE, chain.BlocksTask)
 			}
 		}
-	case "minerinit":
-		minr := []string{"miners"}
-		services.Walk(cfg, minr, 1)
+	case chain.MessagesTask:
+		msg := []string{chain.MessagesTask}
+		services.Walk(cfg, msg, chain.EPOCHS_RANGE, chain.MessagesTask)
+		ticker := time.NewTicker(6 * time.Hour)
+		for {
+			select {
+			case <-ticker.C:
+				services.Walk(cfg, msg, chain.EPOCHS_RANGE, chain.MessagesTask)
+			}
+		}
+	case chain.MarketsTask:
+		mkt := []string{chain.MarketsTask}
+		services.Walk(cfg, mkt, chain.SINGLE_EPOCH, chain.MarketsTask)
+		ticker := time.NewTicker(3 * time.Hour)
+		for {
+			select {
+			case <-ticker.C:
+				services.Walk(cfg, mkt, chain.SINGLE_EPOCH, chain.MarketsTask)
+			}
+		}
 	default:
 		log.Fatal("Please use a valid command")
 	}
-}
-
-func getenvInt(key string) (int, error) {
-	v, err := strconv.Atoi(os.Getenv(key))
-	if err != nil {
-		return -1, err
-	}
-	return v, nil
-}
-
-func getDailyData(cfg config.Config) {
-
 }

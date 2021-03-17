@@ -1,0 +1,27 @@
+package messages
+
+import (
+	"context"
+
+	"github.com/buidl-labs/filecoin-chain-indexer/model"
+)
+
+type MessageGasEconomy struct {
+	tableName struct{} `pg:"message_gas_economy"` // nolint: structcheck,unused
+	Height    int64    `pg:",pk,notnull,use_zero"`
+	StateRoot string   `pg:",pk,notnull"`
+
+	BaseFee          float64 `pg:",use_zero"`
+	BaseFeeChangeLog float64 `pg:",use_zero"`
+
+	GasLimitTotal       int64 `pg:",use_zero"`
+	GasLimitUniqueTotal int64 `pg:",use_zero"`
+
+	GasFillRatio     float64 `pg:",use_zero"`
+	GasCapacityRatio float64 `pg:",use_zero"`
+	GasWasteRatio    float64 `pg:",use_zero"`
+}
+
+func (g *MessageGasEconomy) Persist(ctx context.Context, s model.StorageBatch) error {
+	return s.PersistModel(ctx, g)
+}

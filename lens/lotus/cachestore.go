@@ -9,7 +9,6 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	// "go.opentelemetry.io/otel/api/global"
 	"golang.org/x/xerrors"
 )
 
@@ -32,8 +31,6 @@ func (cs *CacheCtxStore) Context() context.Context {
 }
 
 func (cs *CacheCtxStore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
-	// ctx, span := global.Tracer("").Start(ctx, "CacheCtxStore.Get")
-	// defer span.End()
 	cu, ok := out.(cbg.CBORUnmarshaler)
 	if !ok {
 		return fmt.Errorf("out parameter does not implement CBORUnmarshaler")

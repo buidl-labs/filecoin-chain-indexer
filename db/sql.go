@@ -6,9 +6,9 @@ import (
 	"strconv"
 
 	"github.com/go-pg/pg/v10"
+	logging "github.com/ipfs/go-log/v2"
 	// pq postgresql driver
 	_ "github.com/lib/pq"
-	log "github.com/sirupsen/logrus"
 
 	blocksmodel "github.com/buidl-labs/filecoin-chain-indexer/model/blocks"
 	marketmodel "github.com/buidl-labs/filecoin-chain-indexer/model/market"
@@ -16,6 +16,8 @@ import (
 	minermodel "github.com/buidl-labs/filecoin-chain-indexer/model/miner"
 	powermodel "github.com/buidl-labs/filecoin-chain-indexer/model/power"
 )
+
+var log = logging.Logger("db/sql")
 
 type Store struct {
 	db *sql.DB
@@ -143,11 +145,11 @@ func (s *Store) PersistTransactions(txns []messagemodel.Transaction) error {
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Println("prep txns", err)
+		log.Error("prep txns", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Println("insert txns", err)
+		log.Error("insert txns", err)
 	}
 	log.Info("res txns", res)
 	return nil
@@ -182,11 +184,11 @@ func (s *Store) PersistBlockHeaders(bhs []blocksmodel.BlockHeader) error {
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Println("prep bhs", err)
+		log.Error("prep bhs", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Println("insert bhs", err)
+		log.Error("insert bhs", err)
 	}
 	log.Info("res bhs", res)
 	return nil
@@ -222,11 +224,11 @@ func (s *Store) PersistMinerInfos(mis []*minermodel.MinerInfo) error {
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Println("prep minerinfos", err)
+		log.Error("prep minerinfos", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Println("insert minerinfos", err)
+		log.Error("insert minerinfos", err)
 	}
 	log.Info("res minerinfos", res)
 	return nil
@@ -259,11 +261,11 @@ func (s *Store) PersistMinerFunds(mfs []*minermodel.MinerFund) error {
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Println("prep minerfunds", err)
+		log.Error("prep minerfunds", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Println("insert minerfunds", err)
+		log.Error("insert minerfunds", err)
 	}
 	log.Info("res funds", res)
 	return nil
@@ -298,11 +300,11 @@ func (s *Store) PersistMinerDeadlines(mds []*minermodel.MinerCurrentDeadlineInfo
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Println("prep minerdeadlines", err)
+		log.Error("prep minerdeadlines", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Println("insert minerdeadlines", err)
+		log.Error("insert minerdeadlines", err)
 	}
 	log.Info("res minerdeadlines", res)
 	return nil
@@ -337,11 +339,11 @@ func (s *Store) PersistMinerQuality(mqs []minermodel.MinerQuality) error {
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Println("prep minerqual", err)
+		log.Error("prep minerqual", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Println("insert minerqual", err)
+		log.Error("insert minerqual", err)
 	}
 	log.Info("res minerqual", res)
 	return nil
@@ -371,11 +373,11 @@ func (s *Store) PersistPowerActorClaims(pacs []*powermodel.PowerActorClaim) erro
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Println("prep pac", err)
+		log.Error("prep pac", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Println("insert pac", err)
+		log.Error("insert pac", err)
 	}
 	log.Info("res pac", res)
 	return nil
@@ -415,12 +417,12 @@ func (s *Store) PersistMinerSectors(msis []*minermodel.MinerSectorInfo) error {
 	log.Info("Query", query)
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Println("prep minersectorinfos", err)
+		log.Error("prep minersectorinfos", err)
 	}
 	log.Info("VARGS", valueArgs)
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Println("insert minersectorinfos", err)
+		log.Error("insert minersectorinfos", err)
 	}
 	log.Info("res minersectorinfos", res)
 	return nil
@@ -460,11 +462,11 @@ func (s *Store) PersistMinerSectorFaults(msfs []*minermodel.MinerSectorFault) er
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Println("prep msfaults", err)
+		log.Error("prep msfaults", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Println("insert msfaults", err)
+		log.Error("insert msfaults", err)
 	}
 	log.Info("res msfaults", res)
 	return nil
@@ -508,21 +510,15 @@ func (s *Store) PersistMarketDealProposals(mdps []marketmodel.MarketDealProposal
 	query = query[0 : len(query)-1]
 	stmt, err := s.db.Prepare(query)
 	if err != nil {
-		log.Println("prep marketdealprops", err)
+		log.Error("prep marketdealprops", err)
 	}
 	res, err := stmt.Exec(valueArgs...)
 	if err != nil {
-		log.Println("insert marketdealprops", err)
+		log.Error("insert marketdealprops", err)
 	}
 	log.Info("res marketdealprops", res)
 	return nil
 }
-
-// func (s *Store) UpdateWinCount() {
-// 	// minermodel.MinerQuality{}
-// 	rows, err := s.db.Query("SELECT miner_id, SUM(win_count) from block_headers GROUP BY miner_id")
-// 	fmt.Println("rows", rows)
-// }
 
 func generateQuery(n int, c int) string {
 	query := "($" + strconv.Itoa(c)
