@@ -153,7 +153,10 @@ func (aw *APIWrapper) StateVMCirculatingSupplyInternal(ctx context.Context, tsk 
 
 func (aw *APIWrapper) IndexActorCodes(ctx context.Context, ts *types.TipSet) error {
 	start := time.Now()
-	log.Infow("index actorcodes", "start", start)
+	log.Infow("index actorcodes",
+		"start", start,
+		"height", ts.Height(),
+	)
 
 	stateTree, err := state.LoadStateTree(aw.Store(), ts.ParentState())
 	if err != nil {
@@ -193,6 +196,7 @@ func (aw *APIWrapper) IndexActorCodes(ctx context.Context, ts *types.TipSet) err
 
 	log.Infow("index actorcodes",
 		"completed at", time.Now(),
+		"height", ts.Height(),
 		"time taken", time.Now().Sub(start),
 		"number of bytes", bytesCount,
 	)
