@@ -75,7 +75,7 @@ func NewTipSetIndexer(o lens.APIOpener, db *sql.DB, store db.Store, s model.Stor
 		case MinersTask:
 			tsi.processors[MinersTask] = miner.NewTask(o, store)
 		case BlocksTask:
-			tsi.processors[BlocksTask] = blocks.NewTask(store)
+			tsi.processors[BlocksTask] = blocks.NewTask(o, store)
 		case MessagesTask:
 			tsi.messageProcessors[MessagesTask] = messages.NewTask(o, store)
 		case MarketsTask:
@@ -129,16 +129,22 @@ func (t *TipSetIndexer) TipSet(ctx context.Context, ts *types.TipSet) error {
 
 			// If we have message processors then extract the messages and receipts
 			if len(t.messageProcessors) > 0 {
-				emsgs, err := t.node.GetExecutedMessagesForTipset(ctx, child, parent)
-				if err == nil {
-					// Start all the message processors
-					for name, p := range t.messageProcessors {
-						inFlight++
-						t.runMessageProcessor(tctx, p, name, child, parent, emsgs, results)
-					}
-				} else {
-					return xerrors.Errorf("failed to extract messages: %w", err)
+				// log.Debug("before GetExecutedMessagesForTipset")
+				// t.node.GetExecutedMessagesForTipset(ctx, child, parent)
+				// log.Debug("after GetExecutedMessagesForTipset")
+
+				// emsgs, err := t.node.GetExecutedMessagesForTipset(ctx, child, parent)
+				emsgs := []*lens.ExecutedMessage{}
+
+				// if err == nil {
+				// Start all the message processors
+				for name, p := range t.messageProcessors {
+					inFlight++
+					t.runMessageProcessor(tctx, p, name, child, parent, emsgs, results)
 				}
+				// } else {
+				// 	return xerrors.Errorf("failed to extract messages: %w", err)
+				// }
 			}
 		}
 	}
