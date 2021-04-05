@@ -57,6 +57,7 @@ type ChainAPI interface {
 type StateAPI interface {
 	StateAllMinerFaults(ctx context.Context, lookback abi.ChainEpoch, ts types.TipSetKey) ([]*api.Fault, error)
 	StateChangedActors(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)
+	StateCompute(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*api.ComputeStateOutput, error)
 	StateDecodeParams(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error)
 	StateGetActor(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	StateGetReceipt(ctx context.Context, bcid cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error)
@@ -89,16 +90,18 @@ type MessageMatch struct {
 }
 
 type ExecutedMessage struct {
-	Cid           cid.Cid
-	Height        abi.ChainEpoch
-	Message       *types.Message
-	Receipt       *types.MessageReceipt
-	BlockHeader   *types.BlockHeader
-	Blocks        []cid.Cid // blocks this message appeared in
-	Index         uint64    // Message and receipt sequence in tipset
-	FromActorCode cid.Cid   // code of the actor the message is from
-	ToActorCode   cid.Cid   // code of the actor the message is to
-	GasOutputs    vm.GasOutputs
+	Cid         cid.Cid
+	Height      abi.ChainEpoch
+	Message     *types.Message
+	Receipt     *types.MessageReceipt
+	BlockHeader *types.BlockHeader
+	Blocks      []cid.Cid // blocks this message appeared in
+	Index       uint64    // Message and receipt sequence in tipset
+	From        address.Address
+	To          address.Address
+	GasOutputs  vm.GasOutputs
+	// FromActorCode cid.Cid   // code of the actor the message is from
+	// ToActorCode   cid.Cid   // code of the actor the message is to
 }
 
 type Fault struct {

@@ -16,11 +16,11 @@ require (
 	github.com/filecoin-project/go-padreader v0.0.0-20201016201355-9c5eb1faedb5 // indirect
 	github.com/filecoin-project/go-state-types v0.1.0
 	github.com/filecoin-project/go-statemachine v0.0.0-20200925172917-aaed5359be39 // indirect
-	github.com/filecoin-project/lotus v1.5.0
+	github.com/filecoin-project/lotus v1.5.3
 	github.com/filecoin-project/specs-actors v0.9.13
 	github.com/filecoin-project/specs-actors/v2 v2.3.4
 	github.com/filecoin-project/specs-actors/v3 v3.0.3
-	github.com/filecoin-project/statediff v0.0.8-0.20201027195725-7eaa5391a639
+	github.com/filecoin-project/statediff v0.0.23-0.20210325142844-f4ed79079579
 	github.com/gbrlsnchs/jwt/v3 v3.0.0 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/go-pg/pg/v10 v10.7.5
@@ -67,9 +67,9 @@ replace (
 	github.com/supranational/blst => ./extern/fil-blst/blst
 )
 
-// Supports go-ipld-prime v7
-// TODO: remove once https://github.com/filecoin-project/statediff/pull/155 is merged
-replace github.com/filecoin-project/statediff => github.com/filecoin-project/statediff v0.0.19-0.20210225063407-9e38aa4b7ede
+// // Supports go-ipld-prime v7
+// // TODO: remove once https://github.com/filecoin-project/statediff/pull/155 is merged
+// replace github.com/filecoin-project/statediff => github.com/filecoin-project/statediff v0.0.19-0.20210225063407-9e38aa4b7ede
 
 // Supports go-ipld-prime v7
 // TODO: remove once https://github.com/filecoin-project/go-hamt-ipld/pull/70 is merged

@@ -25,9 +25,9 @@ func main() {
 	if err := logging.SetLogLevel("rpc", "error"); err != nil {
 		log.Fatalf("set rpc log level: %w", err)
 	}
-	if err := logging.SetLogLevel("bufbs", "error"); err != nil {
-		log.Fatalf("set bufbs log level: %w", err)
-	}
+	// if err := logging.SetLogLevel("bufbs", "error"); err != nil {
+	// 	log.Fatalf("set bufbs log level: %w", err)
+	// }
 
 	go func() {
 		log.Info(http.ListenAndServe(":6060", nil))

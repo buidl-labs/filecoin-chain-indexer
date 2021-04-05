@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
 	miner "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -87,6 +88,10 @@ func (aw *APIWrapper) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, er
 
 func (aw *APIWrapper) StateChangedActors(ctx context.Context, old cid.Cid, new cid.Cid) (map[string]types.Actor, error) {
 	return aw.FullNode.StateChangedActors(ctx, old, new)
+}
+
+func (aw *APIWrapper) StateCompute(ctx context.Context, height abi.ChainEpoch, msgs []*types.Message, tsk types.TipSetKey) (*api.ComputeStateOutput, error) {
+	return aw.FullNode.StateCompute(ctx, height, msgs, tsk)
 }
 
 func (aw *APIWrapper) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
@@ -165,6 +170,18 @@ func (aw *APIWrapper) IndexActorCodes(ctx context.Context, ts *types.TipSet) err
 
 	gotstatetree := time.Now()
 	log.Infow("index actorcodes", "gotstatetree", gotstatetree)
+	// log.Info(stateTree)
+	// stFile, _ := json.MarshalIndent(stateTree, "", "	")
+	// err = ioutil.WriteFile("./s3data/st/"+ts.Height().String()+".json", stFile, 0644)
+	// if err != nil {
+	// 	log.Errorw("write stfile",
+	// 		"error", err,
+	// 		"height", ts.Height(),
+	// 	)
+	// }
+	// log.Debugw("written stfile",
+	// 	"height", ts.Height(),
+	// )
 
 	// Build a lookup of actor codes
 	actorCodesStr := map[string]string{}
@@ -224,43 +241,46 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 	// TODO: load from db (or some key-value store)
 	// Listen for new actors and insert them into the store
 	// Doing this since loading actors from state tree is time consuming.
-	plan, err := ioutil.ReadFile(os.Getenv("ACTOR_CODES_JSON"))
-	if err != nil {
-		return nil, xerrors.Errorf("reading ACTOR_CODES_JSON: %w", err)
-	}
-	var results map[string]string // address.Address]cid.Cid
-	err = json.Unmarshal([]byte(plan), &results)
-	if err != nil {
-		return nil, xerrors.Errorf("load actorCodes: %w", err)
-	}
+	// plan, err := ioutil.ReadFile(os.Getenv("ACTOR_CODES_JSON"))
+	// if err != nil {
+	// 	return nil, xerrors.Errorf("reading ACTOR_CODES_JSON: %w", err)
+	// }
+	// var results map[string]string // address.Address]cid.Cid
+	// err = json.Unmarshal([]byte(plan), &results)
+	// if err != nil {
+	// 	return nil, xerrors.Errorf("load actorCodes: %w", err)
+	// }
 
-	actorCodes := map[address.Address]cid.Cid{}
-	actorCodesStr := map[string]string{}
-	for k, v := range results {
-		actorCodesStr[k] = v
-		a, _ := address.NewFromString(k)
-		c, _ := cid.Decode(v)
-		actorCodes[a] = c
-	}
+	// actorCodes := map[address.Address]cid.Cid{}
+	// actorCodesStr := map[string]string{}
+	// for k, v := range results {
+	// 	actorCodesStr[k] = v
+	// 	a, _ := address.NewFromString(k)
+	// 	c, _ := cid.Decode(v)
+	// 	actorCodes[a] = c
+	// }
 
-	getActorCode := func(a address.Address) cid.Cid {
-		c, ok := actorCodes[a]
-		if ok {
-			return c
-		}
+	// getActorCode := func(a address.Address) cid.Cid {
+	// 	c, ok := actorCodes[a]
+	// 	if ok {
+	// 		return c
+	// 	}
 
-		return cid.Undef
-	}
+	// 	return cid.Undef
+	// }
 
 	// Build a lookup of which block headers indexed by their cid
 	blockHeaders := map[cid.Cid]*types.BlockHeader{}
+	log.Debug("before pts.Blocks()")
 	for _, bh := range pts.Blocks() {
 		blockHeaders[bh.Cid()] = bh
 	}
+	log.Debug("after pts.Blocks()")
 
 	// Build a lookup of which blocks each message appears in
 	messageBlocks := map[cid.Cid][]cid.Cid{}
 
+	log.Debug("before pts.Cids()")
 	for _, blkCid := range pts.Cids() {
 		blkMsgs, err := aw.ChainGetBlockMessages(ctx, blkCid)
 		if err != nil {
@@ -271,18 +291,23 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 			messageBlocks[mcid] = append(messageBlocks[mcid], blkCid)
 		}
 	}
+	log.Debug("after pts.Cids()")
 
+	log.Debug("before ChainGetParentMessages")
 	// Get messages that were processed in the parent tipset
 	msgs, err := aw.ChainGetParentMessages(ctx, ts.Cids()[0])
 	if err != nil {
 		return nil, xerrors.Errorf("get parent messages: %w", err)
 	}
+	log.Debug("after ChainGetParentMessages")
 
+	log.Debug("before ChainGetParentReceipts")
 	// Get receipts for parent messages
 	rcpts, err := aw.ChainGetParentReceipts(ctx, ts.Cids()[0])
 	if err != nil {
 		return nil, xerrors.Errorf("get parent receipts: %w", err)
 	}
+	log.Debug("after ChainGetParentReceipts")
 
 	if len(rcpts) != len(msgs) {
 		// logic error somewhere
@@ -304,34 +329,64 @@ func (aw *APIWrapper) GetExecutedMessagesForTipset(ctx context.Context, ts, pts 
 
 	for index, m := range msgs {
 		em := &lens.ExecutedMessage{
-			Cid:           m.Cid,
-			Height:        pts.Height(),
-			Message:       m.Message,
-			Receipt:       rcpts[index],
-			BlockHeader:   blockHeaders[messageBlocks[m.Cid][0]],
-			Blocks:        messageBlocks[m.Cid],
-			Index:         uint64(index),
-			FromActorCode: getActorCode(m.Message.From),
-			ToActorCode:   getActorCode(m.Message.To),
+			Cid:         m.Cid,
+			Height:      pts.Height(),
+			Message:     m.Message,
+			Receipt:     rcpts[index],
+			BlockHeader: blockHeaders[messageBlocks[m.Cid][0]],
+			Blocks:      messageBlocks[m.Cid],
+			Index:       uint64(index),
+			From:        m.Message.From,
+			To:          m.Message.To,
+			// FromActorCode: getActorCode(m.Message.From),
+			// ToActorCode:   getActorCode(m.Message.To),
 		}
 
+		log.Debug("before vmi.ShouldBurn")
 		burn, err := vmi.ShouldBurn(parentStateTree, m.Message, rcpts[index].ExitCode)
 		if err != nil {
 			return nil, xerrors.Errorf("deciding whether should burn failed: %w", err)
 		}
+		log.Debug("after vmi.ShouldBurn")
 
+		log.Debug("before vm.ComputeGasOutputs")
 		em.GasOutputs = vm.ComputeGasOutputs(em.Receipt.GasUsed, em.Message.GasLimit, em.BlockHeader.ParentBaseFee, em.Message.GasFeeCap, em.Message.GasPremium, burn)
+		log.Debug("after vm.ComputeGasOutputs")
 		emsgs = append(emsgs, em)
 	}
-
+	emsgsFile, _ := json.MarshalIndent(emsgs, "", "	")
+	err = ioutil.WriteFile("./s3data/emsgs/"+pts.Height().String()+".json", emsgsFile, 0644)
+	if err != nil {
+		log.Errorw("write emsgsFile",
+			"error", err,
+			"height", pts.Height(),
+		)
+	}
+	log.Debugw("written emsgsFile",
+		"height", pts.Height(),
+	)
 	return emsgs, nil
 }
+
+var _ blockstore.Blockstore = (*apiBlockstore)(nil)
 
 type apiBlockstore struct {
 	api interface {
 		ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 		ChainHasObj(context.Context, cid.Cid) (bool, error)
 	}
+}
+
+func (a *apiBlockstore) View(c cid.Cid, callback func([]byte) error) error {
+	obj, err := a.api.ChainReadObj(context.Background(), c)
+	if err != nil {
+		return err
+	}
+	return callback(obj)
+}
+
+func (a *apiBlockstore) DeleteMany(cids []cid.Cid) error {
+	return xerrors.Errorf("DeleteMany not supported by apiBlockstore")
 }
 
 func (a *apiBlockstore) Get(c cid.Cid) (blocks.Block, error) {

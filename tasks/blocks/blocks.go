@@ -3,10 +3,14 @@ package blocks
 import (
 	"context"
 
+	// "github.com/filecoin-project/go-address"
+	// "github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
 	logging "github.com/ipfs/go-log/v2"
 
+	"github.com/buidl-labs/filecoin-chain-indexer/config"
 	"github.com/buidl-labs/filecoin-chain-indexer/db"
+	"github.com/buidl-labs/filecoin-chain-indexer/lens"
 	"github.com/buidl-labs/filecoin-chain-indexer/model"
 	blocksmodel "github.com/buidl-labs/filecoin-chain-indexer/model/blocks"
 )
@@ -14,12 +18,17 @@ import (
 var log = logging.Logger("blocks")
 
 type Task struct {
-	store db.Store
+	node   lens.API
+	opener lens.APIOpener
+	closer lens.APICloser
+	store  db.Store
+	cfg    config.Config
 }
 
-func NewTask(store db.Store) *Task {
+func NewTask(opener lens.APIOpener, store db.Store) *Task {
 	return &Task{
-		store: store,
+		opener: opener,
+		store:  store,
 	}
 }
 
