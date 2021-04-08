@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"math"
 	"math/big"
+	"os"
 
 	// "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/build"
@@ -56,6 +57,8 @@ func (p *Task) ProcessMessages(ctx context.Context, ts *types.TipSet, pts *types
 		p.closer = closer
 	}
 
+	projectRoot := os.Getenv("ROOTDIR")
+
 	log.Debugw("in ProcessMessages",
 		"height", pts.Height(),
 		"ph", pts.Height(),
@@ -69,7 +72,7 @@ func (p *Task) ProcessMessages(ctx context.Context, ts *types.TipSet, pts *types
 		)
 	} else {
 		csoFile, _ := json.MarshalIndent(cso, "", "	")
-		err := ioutil.WriteFile("./s3data/cso/"+pts.Height().String()+".json", csoFile, 0644)
+		err := ioutil.WriteFile(projectRoot+"/s3data/cso/"+pts.Height().String()+".json", csoFile, 0644)
 		if err != nil {
 			log.Errorw("write csofile",
 				"error", err,
@@ -504,7 +507,7 @@ func (p *Task) ProcessMessages(ctx context.Context, ts *types.TipSet, pts *types
 
 	mgersFile, _ := json.MarshalIndent(messageGasEconomyResult, "", "	")
 
-	err := ioutil.WriteFile("./s3data/messageGasEconomyResult/"+pts.Height().String()+".json", mgersFile, 0644)
+	err := ioutil.WriteFile(projectRoot+"/s3data/messageGasEconomyResult/"+pts.Height().String()+".json", mgersFile, 0644)
 	if err != nil {
 		log.Errorw("write messageGasEconomyResult",
 			"error", err,

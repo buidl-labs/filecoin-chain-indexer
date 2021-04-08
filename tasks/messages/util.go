@@ -185,35 +185,35 @@ func computeTransferredAmount(m *lens.ExecutedMessage, actorName string, p *Task
 	return "0"
 }
 
-func getMethodName(actorName string, methodNum abi.MethodNum) string {
+func GetMethodName(actorName string, methodNum abi.MethodNum) string {
 	if methodNum == 0 {
 		return commonMethods[0]
 	} else if methodNum == 1 {
 		return commonMethods[1]
 	}
 	switch actorName {
-	case "fil/3/account":
+	case "accountActor", "accountActorV2", "accountActorV3":
 		return accountMethods[methodNum]
-	case "fil/3/init":
+	case "initActor", "initActorV2", "initActorV3":
 		return initMethods[methodNum]
-	case "fil/3/cron":
+	case "cronActor", "cronActorV2", "cronActorV3":
 		return cronMethods[methodNum]
-	case "fil/3/reward":
+	case "rewardActor", "rewardActorV2", "rewardActorV3":
 		return rewardMethods[methodNum]
-	case "fil/3/multisig":
+	case "multisigActor", "multisigActorV2", "multisigActorV3":
 		return multisigMethods[methodNum]
-	case "fil/3/paymentchannel":
+	case "paymentChannelActor", "paymentChannelActorV2", "paymentChannelActorV3":
 		return paychMethods[methodNum]
-	case "fil/3/storagemarket":
+	case "storageMarketActor", "storageMarketActorV2", "storageMarketActorV3":
 		return marketMethods[methodNum]
-	case "fil/3/storagepower":
+	case "storagePowerActor", "storagePowerActorV2", "storagePowerActorV3":
 		return powerMethods[methodNum]
-	case "fil/3/storageminer":
+	case "storageMinerActor", "storageMinerActorV2", "storageMinerActorV3":
 		return minerMethods[methodNum]
-	case "fil/3/verifiedregistry":
+	case "verifiedRegistryActor","verifiedRegistryActorV2","verifiedRegistryActorV3":
 		return verifiedRegistryMethods[methodNum]
 	default:
-		return ""
+		return "0"
 	}
 }
 
