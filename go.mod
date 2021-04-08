@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/GeertJohan/go.rice v1.0.2 // indirect
+	github.com/aws/aws-sdk-go v1.38.15
 	github.com/btcsuite/btcd v0.21.0-beta // indirect
 	github.com/daaku/go.zipexe v1.0.1 // indirect
 	github.com/elastic/go-sysinfo v1.5.0 // indirect
@@ -21,6 +22,7 @@ require (
 	github.com/filecoin-project/specs-actors/v2 v2.3.4
 	github.com/filecoin-project/specs-actors/v3 v3.0.3
 	github.com/filecoin-project/statediff v0.0.23-0.20210325142844-f4ed79079579
+	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gbrlsnchs/jwt/v3 v3.0.0 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/go-pg/pg/v10 v10.7.5

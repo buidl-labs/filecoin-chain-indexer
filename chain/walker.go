@@ -233,20 +233,21 @@ func (c *Walker) WalkChain(ctx context.Context, node lens.API, mints, maxts *typ
 					return xerrors.Errorf("notify tipset: %w", err)
 				}
 
-				maxheightB, err := ioutil.ReadFile(os.Getenv("ACS_PARSEDTILL"))
-				if err != nil {
-					return xerrors.Errorf("read acsparsedtill: %w", err)
-				}
+				// maxheightB, err := ioutil.ReadFile(os.Getenv("ACS_PARSEDTILL"))
+				// if err != nil {
+				// 	return xerrors.Errorf("read acsparsedtill: %w", err)
+				// }
 
-				maxheightStr := string(maxheightB)
-				maxheight, _ := strconv.ParseInt(maxheightStr, 10, 64)
+				// maxheightStr := string(maxheightB)
+				// maxheight, _ := strconv.ParseInt(maxheightStr, 10, 64)
 
+				maxheight := int64(maxts.Height())
 				head, err := node.ChainHead(context.Background())
 				if err != nil {
 					return xerrors.Errorf("get chain head: %w", err)
 				}
-				if maxheight >= int64(head.Height())-900 {
-					maxheight = c.maxHeight
+				if c.maxHeight >= int64(head.Height())-900 {
+					maxheight = int64(head.Height())
 				}
 
 				for int64(maxts.Height()) >= c.minHeight && maxts.Height() > 0 {

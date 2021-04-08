@@ -139,6 +139,10 @@ func main() {
 				services.Walk(cfg, mkt, chain.SINGLE_EPOCH, chain.MarketsTask)
 			}
 		}
+	// case "transform":
+	// 	services.Transform(cfg)
+	case "watchevents":
+		services.WatchEvents(cfg)
 	default:
 		log.Fatal("Please use a valid command")
 	}

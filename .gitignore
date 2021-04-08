@@ -23,3 +23,9 @@ filecoin-chain-indexer
 *.json
 !actorCodes.json
 !servedir/*.json
+s3data/*
+!s3data/cso/idx
+s3data/csvs/parsed_messages/*
+!s3data/csvs/parsed_messages/idx
+s3data/csvs/transactions/*
+!s3data/csvs/transactions/idx
