@@ -19,6 +19,7 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipld/go-ipld-prime"
+	"github.com/streadway/amqp"
 	"golang.org/x/xerrors"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/config"
@@ -47,6 +48,14 @@ func NewTask(opener lens.APIOpener, store db.Store) *Task {
 	}
 }
 
+func failOnError(err error, msg string) error {
+	if err != nil {
+		log.Errorf("%s: %s", msg, err)
+		return xerrors.Errorf("%s: %w", msg, err)
+	}
+	return nil
+}
+
 func (p *Task) ProcessMessages(ctx context.Context, ts *types.TipSet, pts *types.TipSet, emsgs []*lens.ExecutedMessage) (model.Persistable, error) {
 	if p.node == nil {
 		node, closer, err := p.opener.Open(ctx)
@@ -55,6 +64,33 @@ func (p *Task) ProcessMessages(ctx context.Context, ts *types.TipSet, pts *types
 		}
 		p.node = node
 		p.closer = closer
+	}
+
+	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	if err != nil {
+		log.Errorf("Failed to connect to RabbitMQ: %s", err)
+		return nil, xerrors.Errorf("Failed to connect to RabbitMQ: %w", err)
+	}
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Errorf("Failed to open a channel: %s", err)
+		return nil, xerrors.Errorf("Failed to open a channel: %w", err)
+	}
+	defer ch.Close()
+
+	q, err := ch.QueueDeclare(
+		"A_rawcsojson", // name
+		false,          // durable
+		false,          // delete when unused
+		false,          // exclusive
+		false,          // no-wait
+		nil,            // arguments
+	)
+	if err != nil {
+		log.Errorf("Failed to declare a queue: %s", err)
+		return nil, xerrors.Errorf("Failed to declare a queue: %w", err)
 	}
 
 	projectRoot := os.Getenv("ROOTDIR")
@@ -70,6 +106,20 @@ func (p *Task) ProcessMessages(ctx context.Context, ts *types.TipSet, pts *types
 			"error", errx,
 			"tipset", pts.Height(),
 		)
+		// body := "failed fetching raw cso " + pts.Height().String()
+		// err = ch.Publish(
+		// 	"",     // exchange
+		// 	q.Name, // routing key
+		// 	false,  // mandatory
+		// 	false,  // immediate
+		// 	amqp.Publishing{
+		// 		ContentType: "text/plain",
+		// 		Body:        []byte(body),
+		// 	})
+		// if err != nil {
+		// 	log.Errorf("Failed to publish a message: %s", err)
+		// 	return nil, xerrors.Errorf("Failed to publish a message: %w", err)
+		// }
 	} else {
 		csoFile, _ := json.MarshalIndent(cso, "", "	")
 		err := ioutil.WriteFile(projectRoot+"/s3data/cso/"+pts.Height().String()+".json", csoFile, 0644)
@@ -78,10 +128,38 @@ func (p *Task) ProcessMessages(ctx context.Context, ts *types.TipSet, pts *types
 				"error", err,
 				"height", pts.Height(),
 			)
+			// body := "failed writing raw cso " + pts.Height().String()
+			// err = ch.Publish(
+			// 	"",     // exchange
+			// 	q.Name, // routing key
+			// 	false,  // mandatory
+			// 	false,  // immediate
+			// 	amqp.Publishing{
+			// 		ContentType: "text/plain",
+			// 		Body:        []byte(body),
+			// 	})
+			// if err != nil {
+			// 	log.Errorf("Failed to publish a message: %s", err)
+			// 	return nil, xerrors.Errorf("Failed to publish a message: %w", err)
+			// }
 		}
 		log.Debugw("written csofile",
 			"height", pts.Height(),
 		)
+		body := "successfully written raw cso " + pts.Height().String()
+		err = ch.Publish(
+			"",     // exchange
+			q.Name, // routing key
+			false,  // mandatory
+			false,  // immediate
+			amqp.Publishing{
+				ContentType: "text/plain",
+				Body:        []byte(body),
+			})
+		if err != nil {
+			log.Errorf("Failed to publish a message: %s", err)
+			return nil, xerrors.Errorf("Failed to publish a message: %w", err)
+		}
 
 		/*
 			msgCount := 0
@@ -507,7 +585,7 @@ func (p *Task) ProcessMessages(ctx context.Context, ts *types.TipSet, pts *types
 
 	mgersFile, _ := json.MarshalIndent(messageGasEconomyResult, "", "	")
 
-	err := ioutil.WriteFile(projectRoot+"/s3data/messageGasEconomyResult/"+pts.Height().String()+".json", mgersFile, 0644)
+	err = ioutil.WriteFile(projectRoot+"/s3data/messageGasEconomyResult/"+pts.Height().String()+".json", mgersFile, 0644)
 	if err != nil {
 		log.Errorw("write messageGasEconomyResult",
 			"error", err,

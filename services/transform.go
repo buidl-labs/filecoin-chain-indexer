@@ -7,16 +7,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
+	// "net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	// "github.com/aws/aws-sdk-go/aws"
+	// "github.com/aws/aws-sdk-go/aws/credentials"
+	// "github.com/aws/aws-sdk-go/aws/session"
+	// "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
@@ -92,7 +92,7 @@ func Transform(cfg config.Config, csofilename string) error {
 	var results map[string]string // address.Address]cid.Cid
 	err = json.Unmarshal([]byte(plan), &results)
 	if err != nil {
-		log.Error("unmarshal",err)
+		log.Error("unmarshal", err)
 		return xerrors.Errorf("load actorCodes: %w", err)
 	}
 
@@ -140,7 +140,7 @@ func Transform(cfg config.Config, csofilename string) error {
 
 	var transactionsArr = [][]string{
 		// {"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "size_bytes", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "parent_base_fee", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "gas_refund", "gas_burned", "actor_name"},
-		{"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "actor_name"},
+		{"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "size_bytes", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "parent_base_fee", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "gas_refund", "gas_burned", "actor_name"},
 	}
 	var parsedMessagesArr = [][]string{
 		{"cid", "height", "sender", "receiver", "value", "method", "params"},
@@ -183,17 +183,19 @@ func Transform(cfg config.Config, csofilename string) error {
 		if !ok {
 			actor = statediff.LotusTypeUnknown
 		}
-		// {"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "actor_name"},
+		// {"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "gas_refund", "gas_burned", "actor_name"},
 		am := []string{ir.MsgCid.String(), fmt.Sprintf("%d", heightint64),
 			irFromID.String(), irToID.String(), ir.Msg.Value.String(), "0",
 			ir.Msg.GasFeeCap.String(), ir.Msg.GasPremium.String(),
-			fmt.Sprintf("%d", ir.Msg.GasLimit), fmt.Sprintf("%d", ir.Msg.Nonce),
+			fmt.Sprintf("%d", ir.Msg.GasLimit), fmt.Sprintf("%d", 0), fmt.Sprintf("%d", ir.Msg.Nonce),
 			fmt.Sprintf("%d", ir.Msg.Method), messages.GetMethodName(string(actor), ir.Msg.Method), "0", "\\x",
 			computeTransferredAmount(string(actor), ir.Msg.Method, irToID, ir.Msg.Params, node),
 			"0", fmt.Sprintf("%d", ir.MsgRct.ExitCode), fmt.Sprintf("%d", ir.MsgRct.GasUsed),
+			fmt.Sprintf("%d", 0),
 			ir.GasCost.BaseFeeBurn.String(), ir.GasCost.OverEstimationBurn.String(),
 			ir.GasCost.MinerPenalty.String(), ir.GasCost.MinerTip.String(),
-			ir.GasCost.Refund.String(), string(actor)}
+			ir.GasCost.Refund.String(), fmt.Sprintf("%d", 0), fmt.Sprintf("%d", 0),
+			string(actor)}
 
 		transactionsArr = append(transactionsArr, am)
 
@@ -280,17 +282,19 @@ func Transform(cfg config.Config, csofilename string) error {
 			if !ok {
 				actor = statediff.LotusTypeUnknown
 			}
-			// {"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "actor_name"},
+			// {"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "gas_refund", "gas_burned", "actor_name"},
 			amsc := []string{sc.Msg.Cid().String(), fmt.Sprintf("%d", heightint64),
 				scFromID.String(), scToID.String(), sc.Msg.Value.String(), "0",
 				sc.Msg.GasFeeCap.String(), sc.Msg.GasPremium.String(),
-				fmt.Sprintf("%d", sc.Msg.GasLimit), fmt.Sprintf("%d", sc.Msg.Nonce),
+				fmt.Sprintf("%d", sc.Msg.GasLimit), fmt.Sprintf("%d", 0), fmt.Sprintf("%d", sc.Msg.Nonce),
 				fmt.Sprintf("%d", sc.Msg.Method), messages.GetMethodName(string(actor), sc.Msg.Method), "0", "\\x",
 				computeTransferredAmount(string(actor), sc.Msg.Method, scToID, sc.Msg.Params, node),
 				"0", fmt.Sprintf("%d", sc.MsgRct.ExitCode), fmt.Sprintf("%d", sc.MsgRct.GasUsed),
+				fmt.Sprintf("%d", 0),
 				ir.GasCost.BaseFeeBurn.String(), ir.GasCost.OverEstimationBurn.String(),
 				ir.GasCost.MinerPenalty.String(), ir.GasCost.MinerTip.String(),
-				ir.GasCost.Refund.String(), string(actor)}
+				ir.GasCost.Refund.String(), fmt.Sprintf("%d", 0),
+				fmt.Sprintf("%d", 0), string(actor)}
 			// "0", "0", "0", "0", "0", string(actor)}
 
 			// generateParamsStr(scToID, sc.Msg.Params, sc.Msg.Method, node)
@@ -366,99 +370,94 @@ func Transform(cfg config.Config, csofilename string) error {
 			return xerrors.Errorf("writing to parsed_messages csv %w", err)
 		}
 	}
-	defer func() {
-		// s3 upload
-		AccessKeyID := os.Getenv("AWS_ACCESS_KEY_ID")
-		SecretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
-		//  MyRegion := os.Getenv("AWS_REGION")
+	/*
+		defer func() {
+			// s3 upload
+			AccessKeyID := os.Getenv("AWS_ACCESS_KEY_ID")
+			SecretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+			//  MyRegion := os.Getenv("AWS_REGION")
 
-		sess := session.New(&aws.Config{
-			Region: aws.String("us-west-2"),
-			Credentials: credentials.NewStaticCredentials(
-				AccessKeyID,
-				SecretAccessKey,
-				"", // a token will be created when the session it's used.
-			)})
-		// svc := s3.New(session.New(), &aws.Config{
-		// 	Region: aws.String("us-west-2"),
-		// 	Credentials: credentials.NewStaticCredentials(
-		// 		AccessKeyID,
-		// 		SecretAccessKey,
-		// 		"", // a token will be created when the session it's used.
-		// 	),
-		// })
+			sess := session.New(&aws.Config{
+				Region: aws.String("us-west-2"),
+				Credentials: credentials.NewStaticCredentials(
+					AccessKeyID,
+					SecretAccessKey,
+					"", // a token will be created when the session it's used.
+				)})
 
-		txnsfile1, err := os.Open(projectRoot + "/s3data/csvs/transactions/" + heightStr + ".csv")
-		if err != nil {
-			log.Error("txns1 fopen", err)
-			return
-		}
-		defer txnsfile1.Close()
-		// Get file size and read the file content into a buffer
-		txnsfileInfo, _ := txnsfile1.Stat()
-		var txnssize int64 = txnsfileInfo.Size()
-		txnsbuffer := make([]byte, txnssize)
-		txnsfile1.Read(txnsbuffer)
+			txnsfile1, err := os.Open(projectRoot + "/s3data/csvs/transactions/" + heightStr + ".csv")
+			if err != nil {
+				log.Error("txns1 fopen", err)
+				return
+			}
+			defer txnsfile1.Close()
+			// Get file size and read the file content into a buffer
+			txnsfileInfo, _ := txnsfile1.Stat()
+			var txnssize int64 = txnsfileInfo.Size()
+			txnsbuffer := make([]byte, txnssize)
+			txnsfile1.Read(txnsbuffer)
 
-		_, err = s3.New(sess).PutObject(&s3.PutObjectInput{
-			Bucket:               aws.String("fmm-csv-transactions"),
-			Key:                  aws.String(heightStr + ".csv"),
-			ACL:                  aws.String("private"),
-			Body:                 bytes.NewReader(txnsbuffer),
-			ContentLength:        aws.Int64(txnssize),
-			ContentType:          aws.String(http.DetectContentType(txnsbuffer)),
-			ContentDisposition:   aws.String("attachment"),
-			ServerSideEncryption: aws.String("AES256"),
-		})
-		if err != nil {
-			log.Error("txns1 putting to s3: ", err)
-			return
-		}
-		log.Debug("txns1 uploaded to s3")
-		e := os.Remove(projectRoot + "/s3data/cso/" + heightStr + ".json")
-		if e != nil {
-			log.Error("deleting csojson: ", err)
-			return
-		}
-		e = os.Remove(projectRoot + "/s3data/csvs/transactions/" + heightStr + ".csv")
-		if e != nil {
-			log.Error("deleting txns1: ", err)
-			return
-		}
+			_, err = s3.New(sess).PutObject(&s3.PutObjectInput{
+				Bucket:               aws.String("fmm-csv-transactions"),
+				Key:                  aws.String(heightStr + ".csv"),
+				ACL:                  aws.String("private"),
+				Body:                 bytes.NewReader(txnsbuffer),
+				ContentLength:        aws.Int64(txnssize),
+				ContentType:          aws.String(http.DetectContentType(txnsbuffer)),
+				ContentDisposition:   aws.String("attachment"),
+				ServerSideEncryption: aws.String("AES256"),
+			})
+			if err != nil {
+				log.Error("txns1 putting to s3: ", err)
+				return
+			}
+			log.Debug("txns1 uploaded to s3")
+			e := os.Remove(projectRoot + "/s3data/cso/" + heightStr + ".json")
+			if e != nil {
+				log.Error("deleting csojson: ", err)
+				return
+			}
+			e = os.Remove(projectRoot + "/s3data/csvs/transactions/" + heightStr + ".csv")
+			if e != nil {
+				log.Error("deleting txns1: ", err)
+				return
+			}
 
-		pmsfile, err := os.Open(projectRoot + "/s3data/csvs/parsed_messages/" + heightStr + ".csv")
-		if err != nil {
-			log.Error("pms fopen", err)
-			return
-		}
-		defer pmsfile.Close()
-		// Get file size and read the file content into a buffer
-		pmsfileInfo, _ := pmsfile.Stat()
-		var pmssize int64 = pmsfileInfo.Size()
-		pmsbuffer := make([]byte, pmssize)
-		pmsfile.Read(pmsbuffer)
+			pmsfile, err := os.Open(projectRoot + "/s3data/csvs/parsed_messages/" + heightStr + ".csv")
+			if err != nil {
+				log.Error("pms fopen", err)
+				return
+			}
+			defer pmsfile.Close()
+			// Get file size and read the file content into a buffer
+			pmsfileInfo, _ := pmsfile.Stat()
+			var pmssize int64 = pmsfileInfo.Size()
+			pmsbuffer := make([]byte, pmssize)
+			pmsfile.Read(pmsbuffer)
 
-		_, err = s3.New(sess).PutObject(&s3.PutObjectInput{
-			Bucket:               aws.String("fmm-csv-parsed-messages"),
-			Key:                  aws.String(heightStr + ".csv"),
-			ACL:                  aws.String("private"),
-			Body:                 bytes.NewReader(pmsbuffer),
-			ContentLength:        aws.Int64(pmssize),
-			ContentType:          aws.String(http.DetectContentType(pmsbuffer)),
-			ContentDisposition:   aws.String("attachment"),
-			ServerSideEncryption: aws.String("AES256"),
-		})
-		if err != nil {
-			log.Error("pms putting to s3: ", err)
-			return
-		}
-		log.Debug("pms uploaded to s3")
-		e = os.Remove(projectRoot + "/s3data/csvs/parsed_messages/" + heightStr + ".csv")
-		if e != nil {
-			log.Error("deleting pms: ", err)
-			return
-		}
-	}()
+			_, err = s3.New(sess).PutObject(&s3.PutObjectInput{
+				Bucket:               aws.String("fmm-csv-parsed-messages"),
+				Key:                  aws.String(heightStr + ".csv"),
+				ACL:                  aws.String("private"),
+				Body:                 bytes.NewReader(pmsbuffer),
+				ContentLength:        aws.Int64(pmssize),
+				ContentType:          aws.String(http.DetectContentType(pmsbuffer)),
+				ContentDisposition:   aws.String("attachment"),
+				ServerSideEncryption: aws.String("AES256"),
+			})
+			if err != nil {
+				log.Error("pms putting to s3: ", err)
+				return
+			}
+			log.Debug("pms uploaded to s3")
+			e = os.Remove(projectRoot + "/s3data/csvs/parsed_messages/" + heightStr + ".csv")
+			if e != nil {
+				log.Error("deleting pms: ", err)
+				return
+			}
+		}()
+	*/
+
 	// }
 
 	return nil

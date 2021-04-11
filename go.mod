@@ -22,7 +22,6 @@ require (
 	github.com/filecoin-project/specs-actors/v2 v2.3.4
 	github.com/filecoin-project/specs-actors/v3 v3.0.3
 	github.com/filecoin-project/statediff v0.0.23-0.20210325142844-f4ed79079579
-	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gbrlsnchs/jwt/v3 v3.0.0 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/go-pg/pg/v10 v10.7.5
@@ -48,6 +47,7 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shirou/gopsutil v3.21.1+incompatible // indirect
+	github.com/streadway/amqp v1.0.0
 	github.com/whyrusleeping/cbor-gen v0.0.0-20210219115102-f37d292932f2
 	go.opencensus.io v0.22.6 // indirect
 	golang.org/x/lint v0.0.0-20201208152925-83fdc39ff7b5 // indirect
