@@ -1,18 +1,6 @@
 package services
 
 import (
-	// "context"
-	// "time"
-	"bytes"
-	"net/http"
-	"os"
-	// "strings"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	// "github.com/fsnotify/fsnotify"
 	"github.com/streadway/amqp"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/config"
@@ -25,7 +13,7 @@ func failOnError(err error, msg string) {
 }
 
 func WatchEvents(cfg config.Config) {
-	projectRoot := os.Getenv("ROOTDIR")
+	// projectRoot := os.Getenv("ROOTDIR")
 
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	failOnError(err, "Failed to connect to RabbitMQ")
@@ -74,53 +62,55 @@ func WatchEvents(cfg config.Config) {
 			if msgBody[:28] == "successfully written raw cso" {
 				log.Debug("written raw cso")
 
-				// s3 upload
-				AccessKeyID := os.Getenv("AWS_ACCESS_KEY_ID")
-				SecretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
-				//  MyRegion := os.Getenv("AWS_REGION")
+				/*
+					// s3 upload
+					AccessKeyID := os.Getenv("AWS_ACCESS_KEY_ID")
+					SecretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+					//  MyRegion := os.Getenv("AWS_REGION")
 
-				sess, err := session.NewSession(&aws.Config{
-					Region: aws.String("us-west-2"),
-					Credentials: credentials.NewStaticCredentials(
-						AccessKeyID,
-						SecretAccessKey,
-						"", // a token will be created when the session it's used.
-					)})
-				if err != nil {
-					log.Error("newsession", err)
-					return
-				}
-				log.Debug("msgbody:" + msgBody)
-				log.Debug("fname:", projectRoot+"/s3data/cso/"+msgBody[29:]+".json")
-				file, err := os.Open(projectRoot + "/s3data/cso/" + msgBody[29:] + ".json")
-				if err != nil {
-					log.Error("fopen", err)
-					return
-				}
-				// defer file.Close()
-				// Get file size and read the file content into a buffer
-				fileInfo, _ := file.Stat()
-				var size int64 = fileInfo.Size()
-				buffer := make([]byte, size)
-				file.Read(buffer)
+					sess, err := session.NewSession(&aws.Config{
+						Region: aws.String("us-west-2"),
+						Credentials: credentials.NewStaticCredentials(
+							AccessKeyID,
+							SecretAccessKey,
+							"", // a token will be created when the session it's used.
+						)})
+					if err != nil {
+						log.Error("newsession", err)
+						return
+					}
+					log.Debug("msgbody:" + msgBody)
+					log.Debug("fname:", projectRoot+"/s3data/cso/"+msgBody[29:]+".json")
+					file, err := os.Open(projectRoot + "/s3data/cso/" + msgBody[29:] + ".json")
+					if err != nil {
+						log.Error("fopen", err)
+						return
+					}
+					// defer file.Close()
+					// Get file size and read the file content into a buffer
+					fileInfo, _ := file.Stat()
+					var size int64 = fileInfo.Size()
+					buffer := make([]byte, size)
+					file.Read(buffer)
 
-				_, err = s3.New(sess).PutObject(&s3.PutObjectInput{
-					Bucket:               aws.String("fmm-cso"),
-					Key:                  aws.String(msgBody[29:] + ".json"),
-					ACL:                  aws.String("private"),
-					Body:                 bytes.NewReader(buffer),
-					ContentLength:        aws.Int64(size),
-					ContentType:          aws.String(http.DetectContentType(buffer)),
-					ContentDisposition:   aws.String("attachment"),
-					ServerSideEncryption: aws.String("AES256"),
-				})
-				if err != nil {
-					log.Error("uploading to s3: ", err)
+					_, err = s3.New(sess).PutObject(&s3.PutObjectInput{
+						Bucket:               aws.String("fmm-cso"),
+						Key:                  aws.String(msgBody[29:] + ".json"),
+						ACL:                  aws.String("private"),
+						Body:                 bytes.NewReader(buffer),
+						ContentLength:        aws.Int64(size),
+						ContentType:          aws.String(http.DetectContentType(buffer)),
+						ContentDisposition:   aws.String("attachment"),
+						ServerSideEncryption: aws.String("AES256"),
+					})
+					if err != nil {
+						log.Error("uploading to s3: ", err)
+						file.Close()
+						return
+					}
+					log.Debug("uploaded to s3")
 					file.Close()
-					return
-				}
-				log.Debug("uploaded to s3")
-				file.Close()
+				*/
 
 				/*** s3 upload done, start transform ***/
 				err = Transform(cfg, msgBody[29:]+".json")

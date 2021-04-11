@@ -46,6 +46,16 @@ func InsertTransformedMessages(cfg config.Config) error {
 	)
 	failOnError(err, "Failed to declare a queue")
 
+	q3, err := ch.QueueDeclare(
+		"C_insertedtodb", // name
+		false,            // durable
+		false,            // delete when unused
+		false,            // exclusive
+		false,            // no-wait
+		nil,              // arguments
+	)
+	failOnError(err, "Failed to declare a queue")
+
 	msgs, err := ch.Consume(
 		q2.Name, // queue
 		"",      // consumer
@@ -71,12 +81,12 @@ func InsertTransformedMessages(cfg config.Config) error {
 					return
 				}
 				log.Info("epoch:", epoch)
-				_, err = store.PqDB.Query("copy tmp_parsed_messages from '"+projectRoot+"/s3data/csvs/parsed_messages/"+epoch+".csv' CSV HEADER")
+				_, err = store.PqDB.Query("copy tmp_parsed_messages from '" + projectRoot + "/s3data/csvs/parsed_messages/" + epoch + ".csv' CSV HEADER")
 				if err != nil {
 					log.Error("copy tmp_parsed_messages", err)
 					return
 				}
-				_, err = store.PqDB.Query("copy tmp_transactions from '"+projectRoot+"/s3data/csvs/transactions/"+epoch+".csv' CSV HEADER")
+				_, err = store.PqDB.Query("copy tmp_transactions from '" + projectRoot + "/s3data/csvs/transactions/" + epoch + ".csv' CSV HEADER")
 				if err != nil {
 					log.Error("copy tmp_transactions", err)
 					return
@@ -131,6 +141,19 @@ func InsertTransformedMessages(cfg config.Config) error {
 					log.Error("delete tmp_transactions", err)
 					return
 				}
+
+				body := "successfully inserted to db " + epoch
+				log.Debug(body)
+				err = ch.Publish(
+					"",      // exchange
+					q3.Name, // routing key
+					false,   // mandatory
+					false,   // immediate
+					amqp.Publishing{
+						ContentType: "text/plain",
+						Body:        []byte(body),
+					})
+				failOnError(err, "Failed to publish a message")
 			}
 		}
 	}()
