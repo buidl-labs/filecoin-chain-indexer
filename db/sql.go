@@ -20,7 +20,7 @@ import (
 var log = logging.Logger("db/sql")
 
 type Store struct {
-	db *sql.DB
+	PqDB *sql.DB
 	DB *pg.DB
 }
 
@@ -39,19 +39,19 @@ func New(connStr string) (*Store, error) {
 	pgdb := pg.Connect(opt)
 
 	return &Store{
-		db: db,
+		PqDB: db,
 		DB: pgdb,
 	}, nil
 }
 
 // Conn returns the underlying database connection
 func (s *Store) Conn() (*sql.DB, error) {
-	return s.db, nil
+	return s.PqDB, nil
 }
 
 // Close closes the database connection
 func (s *Store) Close() error {
-	conn := s.db
+	conn := s.PqDB
 	return conn.Close()
 }
 
@@ -60,7 +60,7 @@ func (s *Store) CloseGoPg() error {
 }
 
 func (s *Store) PersistBatch(m []interface{}, modelName string) error {
-	s.db.Begin()
+	s.PqDB.Begin()
 	for _, i := range m {
 		fmt.Println(i)
 		switch modelName {
@@ -143,7 +143,7 @@ func (s *Store) PersistTransactions(txns []messagemodel.Transaction) error {
 		c += cols
 	}
 	query = query[0 : len(query)-1]
-	stmt, err := s.db.Prepare(query)
+	stmt, err := s.PqDB.Prepare(query)
 	if err != nil {
 		log.Error("prep txns", err)
 	}
@@ -182,7 +182,7 @@ func (s *Store) PersistBlockHeaders(bhs []blocksmodel.BlockHeader) error {
 		c += cols
 	}
 	query = query[0 : len(query)-1]
-	stmt, err := s.db.Prepare(query)
+	stmt, err := s.PqDB.Prepare(query)
 	if err != nil {
 		log.Error("prep bhs", err)
 	}
@@ -222,7 +222,7 @@ func (s *Store) PersistMinerInfos(mis []*minermodel.MinerInfo) error {
 		c += cols
 	}
 	query = query[0 : len(query)-1]
-	stmt, err := s.db.Prepare(query)
+	stmt, err := s.PqDB.Prepare(query)
 	if err != nil {
 		log.Error("prep minerinfos", err)
 	}
@@ -259,7 +259,7 @@ func (s *Store) PersistMinerFunds(mfs []*minermodel.MinerFund) error {
 		c += cols
 	}
 	query = query[0 : len(query)-1]
-	stmt, err := s.db.Prepare(query)
+	stmt, err := s.PqDB.Prepare(query)
 	if err != nil {
 		log.Error("prep minerfunds", err)
 	}
@@ -298,7 +298,7 @@ func (s *Store) PersistMinerDeadlines(mds []*minermodel.MinerCurrentDeadlineInfo
 		c += cols
 	}
 	query = query[0 : len(query)-1]
-	stmt, err := s.db.Prepare(query)
+	stmt, err := s.PqDB.Prepare(query)
 	if err != nil {
 		log.Error("prep minerdeadlines", err)
 	}
@@ -337,7 +337,7 @@ func (s *Store) PersistMinerQuality(mqs []minermodel.MinerQuality) error {
 		c += cols
 	}
 	query = query[0 : len(query)-1]
-	stmt, err := s.db.Prepare(query)
+	stmt, err := s.PqDB.Prepare(query)
 	if err != nil {
 		log.Error("prep minerqual", err)
 	}
@@ -371,7 +371,7 @@ func (s *Store) PersistPowerActorClaims(pacs []*powermodel.PowerActorClaim) erro
 		c += cols
 	}
 	query = query[0 : len(query)-1]
-	stmt, err := s.db.Prepare(query)
+	stmt, err := s.PqDB.Prepare(query)
 	if err != nil {
 		log.Error("prep pac", err)
 	}
@@ -415,7 +415,7 @@ func (s *Store) PersistMinerSectors(msis []*minermodel.MinerSectorInfo) error {
 	}
 	query = query[0 : len(query)-1]
 	log.Info("Query", query)
-	stmt, err := s.db.Prepare(query)
+	stmt, err := s.PqDB.Prepare(query)
 	if err != nil {
 		log.Error("prep minersectorinfos", err)
 	}
@@ -460,7 +460,7 @@ func (s *Store) PersistMinerSectorFaults(msfs []*minermodel.MinerSectorFault) er
 		c += cols
 	}
 	query = query[0 : len(query)-1]
-	stmt, err := s.db.Prepare(query)
+	stmt, err := s.PqDB.Prepare(query)
 	if err != nil {
 		log.Error("prep msfaults", err)
 	}
@@ -508,7 +508,7 @@ func (s *Store) PersistMarketDealProposals(mdps []marketmodel.MarketDealProposal
 		c += cols
 	}
 	query = query[0 : len(query)-1]
-	stmt, err := s.db.Prepare(query)
+	stmt, err := s.PqDB.Prepare(query)
 	if err != nil {
 		log.Error("prep marketdealprops", err)
 	}
