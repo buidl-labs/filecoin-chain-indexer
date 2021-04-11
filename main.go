@@ -145,6 +145,8 @@ func main() {
 		services.WatchEvents(cfg)
 	case "insertcsv":
 		services.InsertTransformedMessages(cfg)
+	case "s3":
+		services.UploadS3()
 	default:
 		log.Fatal("Please use a valid command")
 	}
