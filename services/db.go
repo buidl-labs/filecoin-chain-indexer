@@ -27,6 +27,14 @@ func InsertTransformedMessages(cfg config.Config) error {
 		log.Errorw("setup indexer, connecting db", "error", err)
 		return xerrors.Errorf("setup indexer, connecting db: %w", err)
 	}
+	// defer func() {
+	// 	if e := store.Close(); e != nil {
+	// 		log.Error("deferclosing pq", e)
+	// 	}
+	// 	if e1 := store.CloseGoPg(); e1 != nil {
+	// 		log.Error("deferclosing gopg", e1)
+	// 	}
+	// }()
 
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	failOnError(err, "Failed to connect to RabbitMQ")
@@ -81,12 +89,12 @@ func InsertTransformedMessages(cfg config.Config) error {
 					return
 				}
 				log.Info("epoch:", epoch)
-				_, err = store.PqDB.Query("copy tmp_parsed_messages from '" + projectRoot + "/s3data/csvs/parsed_messages/" + epoch + ".csv' CSV HEADER")
+				_, err = store.PqDB.Exec("copy tmp_parsed_messages from '" + projectRoot + "/s3data/csvs/parsed_messages/" + epoch + ".csv' CSV HEADER")
 				if err != nil {
 					log.Error("copy tmp_parsed_messages", err)
 					return
 				}
-				_, err = store.PqDB.Query("copy tmp_transactions from '" + projectRoot + "/s3data/csvs/transactions/" + epoch + ".csv' CSV HEADER")
+				_, err = store.PqDB.Exec("copy tmp_transactions from '" + projectRoot + "/s3data/csvs/transactions/" + epoch + ".csv' CSV HEADER")
 				if err != nil {
 					log.Error("copy tmp_transactions", err)
 					return
@@ -112,14 +120,14 @@ func InsertTransformedMessages(cfg config.Config) error {
 				// 	log.Error("tx.commit", err)
 				// 	return
 				// }
-				_, err = store.PqDB.Query(`INSERT INTO parsed_messages SELECT * FROM `+
+				_, err = store.PqDB.Exec(`INSERT INTO parsed_messages SELECT * FROM `+
 					`tmp_parsed_messages WHERE height = $1 `+
 					`ON CONFLICT DO NOTHING`, string(epoch))
 				if err != nil {
 					log.Error("insert parsed_messages", err)
 					return
 				}
-				_, err = store.PqDB.Query(`INSERT INTO transactions SELECT * FROM `+
+				_, err = store.PqDB.Exec(`INSERT INTO transactions SELECT * FROM `+
 					`tmp_transactions WHERE height = $1 `+
 					`ON CONFLICT DO NOTHING`, string(epoch))
 				if err != nil {
@@ -129,18 +137,24 @@ func InsertTransformedMessages(cfg config.Config) error {
 
 				// Delete inserted rows from tmp tables
 
-				_, err = store.PqDB.Query(`DELETE FROM tmp_parsed_messages `+
+				_, err = store.PqDB.Exec(`DELETE FROM tmp_parsed_messages `+
 					`WHERE height = $1`, string(epoch))
 				if err != nil {
 					log.Error("delete tmp_parsed_messages", err)
 					return
 				}
-				_, err = store.PqDB.Query(`DELETE FROM tmp_transactions `+
+				_, err = store.PqDB.Exec(`DELETE FROM tmp_transactions `+
 					`WHERE height = $1`, string(epoch))
 				if err != nil {
 					log.Error("delete tmp_transactions", err)
 					return
 				}
+				// if cerr1 := store.Close(); cerr1 != nil {
+				// 	log.Error("closing pq:", cerr1)
+				// }
+				// if cerr2 := store.CloseGoPg(); cerr2 != nil {
+				// 	log.Error("closing gopg:", cerr2)
+				// }
 
 				body := "successfully inserted to db " + epoch
 				log.Debug(body)
