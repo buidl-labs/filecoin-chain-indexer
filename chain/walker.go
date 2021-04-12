@@ -62,7 +62,7 @@ func (c *Walker) Run(ctx context.Context) error {
 	if c.taskType == SINGLE_EPOCH {
 		for _, task := range c.tasks {
 			if task == ActorCodesTask {
-				ts, err := node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(c.cfg.Epoch), types.EmptyTSK)
+				ts, err := node.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(ts.Height()-900), types.EmptyTSK)
 				if err != nil {
 					return xerrors.Errorf("get tipset by height: %w", err)
 				}
