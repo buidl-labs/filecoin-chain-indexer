@@ -108,7 +108,7 @@ func UploadS3() {
 				log.Error("txns1 fopen", err)
 				return
 			}
-			defer txnsfile1.Close()
+			// defer txnsfile1.Close()
 			// Get file size and read the file content into a buffer
 			txnsfileInfo, _ := txnsfile1.Stat()
 			var txnssize int64 = txnsfileInfo.Size()
@@ -127,9 +127,11 @@ func UploadS3() {
 			})
 			if err != nil {
 				log.Error("txns1 putting to s3: ", err)
+				txnsfile1.Close()
 				return
 			}
 			log.Debug("txns1 uploaded to s3")
+			txnsfile1.Close()
 
 			e = os.Remove(projectRoot + "/s3data/csvs/transactions/" + msgBody[28:] + ".csv")
 			if e != nil {
@@ -142,7 +144,7 @@ func UploadS3() {
 				log.Error("pms fopen", err)
 				return
 			}
-			defer pmsfile.Close()
+			// defer pmsfile.Close()
 			// Get file size and read the file content into a buffer
 			pmsfileInfo, _ := pmsfile.Stat()
 			var pmssize int64 = pmsfileInfo.Size()
@@ -161,9 +163,11 @@ func UploadS3() {
 			})
 			if err != nil {
 				log.Error("pms putting to s3: ", err)
+				pmsfile.Close()
 				return
 			}
 			log.Debug("pms uploaded to s3")
+			pmsfile.Close()
 			e = os.Remove(projectRoot + "/s3data/csvs/parsed_messages/" + msgBody[28:] + ".csv")
 			if e != nil {
 				log.Error("deleting pms: ", err)
