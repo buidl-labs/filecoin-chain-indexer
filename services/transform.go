@@ -140,10 +140,10 @@ func Transform(cfg config.Config, csofilename string) error {
 
 	var transactionsArr = [][]string{
 		// {"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "size_bytes", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "parent_base_fee", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "gas_refund", "gas_burned", "actor_name"},
-		{"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "size_bytes", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "parent_base_fee", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "gas_refund", "gas_burned", "actor_name"},
+		{"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "size_bytes", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "parent_base_fee", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "gas_refund", "gas_burned", "actor_name", "miner"},
 	}
 	var parsedMessagesArr = [][]string{
-		{"cid", "height", "sender", "receiver", "value", "method", "params"},
+		{"cid", "height", "sender", "receiver", "value", "method", "params", "miner"},
 	}
 	for i, ir := range cso.Trace {
 		log.Info("ir " + fmt.Sprintf("%d", i))
@@ -183,6 +183,10 @@ func Transform(cfg config.Config, csofilename string) error {
 		if !ok {
 			actor = statediff.LotusTypeUnknown
 		}
+		miner := "0"
+		if actor == "storageMinerActorV3" || actor == "storageMinerActorV2" || actor == "storageMinerActor" {
+			miner = irToID.String()
+		}
 		// {"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "gas_refund", "gas_burned", "actor_name"},
 		am := []string{ir.MsgCid.String(), fmt.Sprintf("%d", heightint64),
 			irFromID.String(), irToID.String(), ir.Msg.Value.String(), "0",
@@ -195,7 +199,7 @@ func Transform(cfg config.Config, csofilename string) error {
 			ir.GasCost.BaseFeeBurn.String(), ir.GasCost.OverEstimationBurn.String(),
 			ir.GasCost.MinerPenalty.String(), ir.GasCost.MinerTip.String(),
 			ir.GasCost.Refund.String(), fmt.Sprintf("%d", 0), fmt.Sprintf("%d", 0),
-			string(actor)}
+			string(actor), miner}
 
 		transactionsArr = append(transactionsArr, am)
 
@@ -242,7 +246,7 @@ func Transform(cfg config.Config, csofilename string) error {
 			pmir := []string{
 				ir.MsgCid.String(), fmt.Sprintf("%d", heightint64),
 				irFromID.String(), irToID.String(), ir.Msg.Value.String(),
-				method, params,
+				method, params, miner,
 			}
 			parsedMessagesArr = append(parsedMessagesArr, pmir)
 		}
@@ -282,6 +286,10 @@ func Transform(cfg config.Config, csofilename string) error {
 			if !ok {
 				actor = statediff.LotusTypeUnknown
 			}
+			miner := "0"
+			if actor == "storageMinerActorV3" || actor == "storageMinerActorV2" || actor == "storageMinerActor" {
+				miner = scToID.String()
+			}
 			// {"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "gas_refund", "gas_burned", "actor_name"},
 			amsc := []string{sc.Msg.Cid().String(), fmt.Sprintf("%d", heightint64),
 				scFromID.String(), scToID.String(), sc.Msg.Value.String(), "0",
@@ -294,7 +302,7 @@ func Transform(cfg config.Config, csofilename string) error {
 				ir.GasCost.BaseFeeBurn.String(), ir.GasCost.OverEstimationBurn.String(),
 				ir.GasCost.MinerPenalty.String(), ir.GasCost.MinerTip.String(),
 				ir.GasCost.Refund.String(), fmt.Sprintf("%d", 0),
-				fmt.Sprintf("%d", 0), string(actor)}
+				fmt.Sprintf("%d", 0), string(actor), miner}
 			// "0", "0", "0", "0", "0", string(actor)}
 
 			// generateParamsStr(scToID, sc.Msg.Params, sc.Msg.Method, node)
@@ -329,7 +337,7 @@ func Transform(cfg config.Config, csofilename string) error {
 				pmsc := []string{
 					sc.Msg.Cid().String(), fmt.Sprintf("%d", heightint64),
 					scFromID.String(), scToID.String(), sc.Msg.Value.String(),
-					method, params,
+					method, params, miner,
 				}
 				parsedMessagesArr = append(parsedMessagesArr, pmsc)
 			}

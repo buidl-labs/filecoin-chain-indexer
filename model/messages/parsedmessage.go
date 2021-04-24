@@ -14,6 +14,7 @@ type ParsedMessage struct {
 	Receiver  string   `pg:",notnull"`
 	Value     string   `pg:",notnull"`
 	Method    string   `pg:",notnull"`
+	Miner     string   `pg:""`
 
 	Params string `pg:",type:jsonb,notnull"`
 }
