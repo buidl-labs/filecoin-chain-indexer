@@ -32,7 +32,7 @@ CREATE TABLE transactions
     "gas_burned" BIGINT NOT NULL,
     "actor_name" TEXT,
     PRIMARY KEY ("height", "cid", "state_root")
-);
+) PARTITION BY RANGE (height);
 
 CREATE TABLE block_headers
 (
@@ -66,7 +66,7 @@ CREATE TABLE parsed_messages
     "method" TEXT NOT NULL,
     "params" jsonb,
     PRIMARY KEY ("height", "cid")
-);
+) PARTITION BY RANGE (height);
 
 CREATE TABLE message_gas_economy
 (

@@ -1,15 +1,140 @@
 package services
 
 import (
+	"encoding/json"
+	"io/ioutil"
+	"os"
+	"strconv"
+
+	"github.com/filecoin-project/lotus/api"
 	"github.com/streadway/amqp"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/config"
+	"github.com/buidl-labs/filecoin-chain-indexer/db"
+	marketmodel "github.com/buidl-labs/filecoin-chain-indexer/model/market"
 )
 
 func failOnError(err error, msg string) {
 	if err != nil {
 		log.Errorf("%s: %s", msg, err)
 	}
+}
+
+func WatchMarket(cfg config.Config) {
+	projectRoot := os.Getenv("ROOTDIR")
+
+	store, err := db.New(cfg.DBConnStr)
+	if err != nil {
+		log.Errorw("setup indexer, connecting db", "error", err)
+		return
+	}
+
+	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	failOnError(err, "Failed to connect to RabbitMQ")
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	failOnError(err, "Failed to open a channel")
+	defer ch.Close()
+
+	q, err := ch.QueueDeclare(
+		"D_marketdealsjson", // name
+		false,               // durable
+		false,               // delete when unused
+		false,               // exclusive
+		false,               // no-wait
+		nil,                 // arguments
+	)
+	failOnError(err, "Failed to declare a queue")
+
+	msgs, err := ch.Consume(
+		q.Name, // queue
+		"",     // consumer
+		true,   // auto-ack
+		false,  // exclusive
+		false,  // no-local
+		false,  // no-wait
+		nil,    // args
+	)
+	failOnError(err, "Failed to register a consumer")
+
+	forever := make(chan bool)
+	go func() {
+		for d := range msgs {
+			msgBody := string(d.Body)
+			if msgBody[:36] == "successfully written marketDealsFile" {
+				log.Debug("written marketDeals")
+
+				jsonFile, err := os.Open(projectRoot + "/s3data/marketDeals/" + msgBody[37:] + ".json")
+				if err != nil {
+					log.Error("opening marketDealsFile", err)
+					return
+					// return xerrors.Errorf("opening a file in marketDeals dir: %w", err)
+				}
+				// defer jsonFile.Close()
+
+				byteValue, _ := ioutil.ReadAll(jsonFile)
+				jsonFile.Close()
+
+				// var cso *api.ComputeStateOutput
+				var marketDeals map[string]api.MarketDeal
+
+				json.Unmarshal(byteValue, &marketDeals)
+				// msgBody[37:] + ".json"
+
+				for idStr, deal := range marketDeals {
+					dealID, err := strconv.ParseUint(idStr, 10, 64)
+					if err != nil {
+						return
+					}
+					mds := &marketmodel.MarketDealState{
+						// Height:           int64(ts.Height()),
+						DealID:           dealID,
+						SectorStartEpoch: int64(deal.State.SectorStartEpoch),
+						LastUpdateEpoch:  int64(deal.State.LastUpdatedEpoch),
+						SlashEpoch:       int64(deal.State.SlashEpoch),
+						StateRoot:        "0", // ts.ParentState().String(),
+					}
+					mdp := &marketmodel.MarketDealProposal{
+						// Height:               int64(ts.Height()),
+						DealID:               dealID,
+						StateRoot:            "0", // ts.ParentState().String(),
+						PaddedPieceSize:      uint64(deal.Proposal.PieceSize),
+						UnpaddedPieceSize:    uint64(deal.Proposal.PieceSize.Unpadded()),
+						StartEpoch:           int64(deal.Proposal.StartEpoch),
+						EndEpoch:             int64(deal.Proposal.EndEpoch),
+						ClientID:             deal.Proposal.Client.String(),
+						ProviderID:           deal.Proposal.Provider.String(),
+						ClientCollateral:     deal.Proposal.ClientCollateral.String(),
+						ProviderCollateral:   deal.Proposal.ProviderCollateral.String(),
+						StoragePricePerEpoch: deal.Proposal.StoragePricePerEpoch.String(),
+						PieceCID:             deal.Proposal.PieceCID.String(),
+						IsVerified:           deal.Proposal.VerifiedDeal,
+						Label:                deal.Proposal.Label,
+					}
+
+					r, err := store.DB.Model(mdp).
+						OnConflict("(deal_id) DO UPDATE").
+						Insert()
+					if err != nil {
+						log.Errorw("inserting marketDealProposal", "error", err)
+					} else {
+						log.Debug("inserted marketDealProposal", r)
+					}
+					r, err = store.DB.Model(mds).
+						OnConflict("(deal_id) DO UPDATE").
+						Insert()
+					if err != nil {
+						log.Errorw("inserting marketDealState", "error", err)
+					} else {
+						log.Debug("inserted marketDealState", r)
+					}
+				}
+			}
+		}
+	}()
+	log.Info(" [*] Waiting for messages. To exit press CTRL+C")
+	<-forever
 }
 
 func WatchEvents(cfg config.Config) {
@@ -130,8 +255,9 @@ func WatchEvents(cfg config.Config) {
 					false,   // mandatory
 					false,   // immediate
 					amqp.Publishing{
-						ContentType: "text/plain",
-						Body:        []byte(body),
+						DeliveryMode: amqp.Persistent,
+						ContentType:  "text/plain",
+						Body:         []byte(body),
 					})
 				failOnError(err, "Failed to publish a message")
 

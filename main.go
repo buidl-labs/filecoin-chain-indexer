@@ -143,10 +143,14 @@ func main() {
 	// 	services.Transform(cfg)
 	case "watchevents":
 		services.WatchEvents(cfg)
+	case "watchmarket":
+		services.WatchMarket(cfg)
 	case "insertcsv":
 		services.InsertTransformedMessages(cfg)
 	case "s3":
 		services.UploadS3()
+	case "partition":
+		services.Partition(cfg)
 	default:
 		log.Fatal("Please use a valid command")
 	}
