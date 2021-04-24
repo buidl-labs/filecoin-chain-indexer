@@ -113,6 +113,7 @@ func (p *Task) ProcessMessages(ctx context.Context, ts *types.TipSet, pts *types
 		// 	false,  // mandatory
 		// 	false,  // immediate
 		// 	amqp.Publishing{
+		// 		DeliveryMode: amqp.Persistent,
 		// 		ContentType: "text/plain",
 		// 		Body:        []byte(body),
 		// 	})
@@ -135,6 +136,7 @@ func (p *Task) ProcessMessages(ctx context.Context, ts *types.TipSet, pts *types
 			// 	false,  // mandatory
 			// 	false,  // immediate
 			// 	amqp.Publishing{
+			//		DeliveryMode: amqp.Persistent,
 			// 		ContentType: "text/plain",
 			// 		Body:        []byte(body),
 			// 	})
@@ -153,8 +155,9 @@ func (p *Task) ProcessMessages(ctx context.Context, ts *types.TipSet, pts *types
 			false,  // mandatory
 			false,  // immediate
 			amqp.Publishing{
-				ContentType: "text/plain",
-				Body:        []byte(body),
+				DeliveryMode: amqp.Persistent,
+				ContentType:  "text/plain",
+				Body:         []byte(body),
 			})
 		if err != nil {
 			log.Errorf("Failed to publish a message: %s", err)
