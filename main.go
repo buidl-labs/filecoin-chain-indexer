@@ -151,6 +151,8 @@ func main() {
 		services.UploadS3()
 	case "partition":
 		services.Partition(cfg)
+	case "fixcsvs":
+		services.FixCsvs(cfg)
 	default:
 		log.Fatal("Please use a valid command")
 	}
