@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -18,7 +19,7 @@ import (
 )
 
 func updateMinerAddressChanges(p *Task, m *lens.ExecutedMessage, transaction *messagemodel.Transaction) error {
-	if transaction.Method == 3 && transaction.ActorName == "fil/3/storageminer" {
+	if transaction.Method == 3 && strings.HasPrefix(transaction.ActorName, "storageMinerActor") {
 		// change in worker/control addr
 		tts, _ := p.node.ChainGetTipSetByHeight(context.Background(), abi.ChainEpoch(transaction.Height), types.EmptyTSK)
 		nts, _ := p.node.ChainGetTipSetByHeight(context.Background(), abi.ChainEpoch(transaction.Height+1), types.EmptyTSK)
@@ -110,7 +111,7 @@ func updateMinerAddressChanges(p *Task, m *lens.ExecutedMessage, transaction *me
 			}
 		}
 	}
-	if transaction.Method == 23 && transaction.ActorName == "fil/3/storageminer" {
+	if transaction.Method == 23 && strings.HasPrefix(transaction.ActorName, "storageMinerActor") {
 		// change in owner addr
 		tts, _ := p.node.ChainGetTipSetByHeight(context.Background(), abi.ChainEpoch(transaction.Height), types.EmptyTSK)
 		nts, _ := p.node.ChainGetTipSetByHeight(context.Background(), abi.ChainEpoch(transaction.Height+1), types.EmptyTSK)
@@ -164,7 +165,7 @@ func generateParamsStr(toAddr address.Address, params []byte, method abi.MethodN
 
 func computeTransferredAmount(m *lens.ExecutedMessage, actorName string, p *Task) string {
 	if m.Message.Method == builtin3.MethodsMiner.WithdrawBalance &&
-		actorName == "fil/3/storageminer" {
+		strings.HasPrefix(actorName, "storageMinerActor") {
 		decodedParams, err := p.node.StateDecodeParams(context.Background(), m.Message.To, m.Message.Method, m.Message.Params, types.EmptyTSK)
 		if err != nil {
 			return "0"
@@ -173,7 +174,7 @@ func computeTransferredAmount(m *lens.ExecutedMessage, actorName string, p *Task
 		amt := d["AmountRequested"].(string)
 		return amt
 	} else if m.Message.Method == builtin3.MethodsMarket.WithdrawBalance &&
-		actorName == "fil/3/storagemarket" {
+		strings.HasPrefix(actorName, "storageMarketActor") {
 		decodedParams, err := p.node.StateDecodeParams(context.Background(), m.Message.To, m.Message.Method, m.Message.Params, types.EmptyTSK)
 		if err != nil {
 			return "0"
@@ -191,30 +192,57 @@ func GetMethodName(actorName string, methodNum abi.MethodNum) string {
 	} else if methodNum == 1 {
 		return commonMethods[1]
 	}
-	switch actorName {
-	case "accountActor", "accountActorV2", "accountActorV3":
+
+	if strings.HasPrefix(actorName, "accountActor") {
 		return accountMethods[methodNum]
-	case "initActor", "initActorV2", "initActorV3":
+	} else if strings.HasPrefix(actorName, "initActor") {
 		return initMethods[methodNum]
-	case "cronActor", "cronActorV2", "cronActorV3":
+	} else if strings.HasPrefix(actorName, "cronActor") {
 		return cronMethods[methodNum]
-	case "rewardActor", "rewardActorV2", "rewardActorV3":
+	} else if strings.HasPrefix(actorName, "rewardActor") {
 		return rewardMethods[methodNum]
-	case "multisigActor", "multisigActorV2", "multisigActorV3":
+	} else if strings.HasPrefix(actorName, "multisigActor") {
 		return multisigMethods[methodNum]
-	case "paymentChannelActor", "paymentChannelActorV2", "paymentChannelActorV3":
+	} else if strings.HasPrefix(actorName, "paymentChannelActor") {
 		return paychMethods[methodNum]
-	case "storageMarketActor", "storageMarketActorV2", "storageMarketActorV3":
+	} else if strings.HasPrefix(actorName, "storageMarketActor") {
 		return marketMethods[methodNum]
-	case "storagePowerActor", "storagePowerActorV2", "storagePowerActorV3":
+	} else if strings.HasPrefix(actorName, "storagePowerActor") {
 		return powerMethods[methodNum]
-	case "storageMinerActor", "storageMinerActorV2", "storageMinerActorV3":
+	} else if strings.HasPrefix(actorName, "storageMinerActor") {
 		return minerMethods[methodNum]
-	case "verifiedRegistryActor","verifiedRegistryActorV2","verifiedRegistryActorV3":
+	} else if strings.HasPrefix(actorName, "verifiedRegistryActor") {
 		return verifiedRegistryMethods[methodNum]
-	default:
+	} else {
 		return "0"
 	}
+
+	/*
+		switch actorName {
+		case "accountActor", "accountActorV2", "accountActorV3":
+			return accountMethods[methodNum]
+		case "initActor", "initActorV2", "initActorV3":
+			return initMethods[methodNum]
+		case "cronActor", "cronActorV2", "cronActorV3":
+			return cronMethods[methodNum]
+		case "rewardActor", "rewardActorV2", "rewardActorV3":
+			return rewardMethods[methodNum]
+		case "multisigActor", "multisigActorV2", "multisigActorV3":
+			return multisigMethods[methodNum]
+		case "paymentChannelActor", "paymentChannelActorV2", "paymentChannelActorV3":
+			return paychMethods[methodNum]
+		case "storageMarketActor", "storageMarketActorV2", "storageMarketActorV3":
+			return marketMethods[methodNum]
+		case "storagePowerActor", "storagePowerActorV2", "storagePowerActorV3":
+			return powerMethods[methodNum]
+		case "storageMinerActor", "storageMinerActorV2", "storageMinerActorV3":
+			return minerMethods[methodNum]
+		case "verifiedRegistryActor", "verifiedRegistryActorV2", "verifiedRegistryActorV3":
+			return verifiedRegistryMethods[methodNum]
+		default:
+			return "0"
+		}
+	*/
 }
 
 var commonMethods = map[abi.MethodNum]string{

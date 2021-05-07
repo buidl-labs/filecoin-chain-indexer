@@ -1,16 +1,73 @@
 package services
 
 import (
+	// "bytes"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	// power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"golang.org/x/xerrors"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/config"
 	"github.com/buidl-labs/filecoin-chain-indexer/db"
+	"github.com/buidl-labs/filecoin-chain-indexer/model/messages"
+	"github.com/buidl-labs/filecoin-chain-indexer/util"
+	"github.com/go-pg/pg/v10"
 )
+
+func UpdateTransactionMiner(cfg config.Config) error {
+	from := cfg.From
+	to := cfg.To
+
+	if from > to {
+		log.Errorf("%d > %d\n", from, to)
+		return xerrors.Errorf("%d > %d", from, to)
+	}
+
+	store, err := db.New(cfg.DBConnStr)
+	if err != nil {
+		log.Errorw("setup indexer, connecting db", "error", err)
+		return xerrors.Errorf("setup indexer, connecting db: %w", err)
+	}
+
+	tx, err := store.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Close()
+	if err := setMiner(context.Background(), tx, from, to); err != nil {
+		// Rollback on error.
+		_ = tx.Rollback()
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		panic(err)
+	}
+	return nil
+}
+
+func setMiner(ctx context.Context, tx *pg.Tx, from, to int64) error {
+	var transactions []*messages.Transaction
+	err := tx.Model(transactions).
+		Where("height >= ? AND height <= ?", from, to).
+		Select()
+	if err != nil {
+		return err
+	}
+	log.Info("count", len(transactions))
+	for _, transaction := range transactions {
+		var miner string = "0"
+		miner = util.DeriveMiner(transaction, miner)
+		tx.Model(transactions).
+			Set("miner = ?", miner).
+			Where("id = ?", transaction.Cid).
+			Update()
+	}
+	return nil
+}
 
 func FixCsvs(cfg config.Config) error {
 	projectRoot := os.Getenv("ROOTDIR")
