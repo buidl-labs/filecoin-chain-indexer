@@ -47,6 +47,7 @@ type Transaction struct {
 	GasRefund          int64           `pg:",use_zero,notnull"`
 	GasBurned          int64           `pg:",use_zero,notnull"`
 	Miner              string          `pg:""`
+	ReturnBytes        string          `pg:""`
 }
 
 type MinerTransaction struct {

@@ -32,10 +32,11 @@ import (
 	"github.com/buidl-labs/filecoin-chain-indexer/config"
 	"github.com/buidl-labs/filecoin-chain-indexer/lens"
 	"github.com/buidl-labs/filecoin-chain-indexer/tasks/messages"
+	"github.com/buidl-labs/filecoin-chain-indexer/util"
 
 	// "github.com/buidl-labs/filecoin-chain-indexer/db"
 	"github.com/buidl-labs/filecoin-chain-indexer/lens/lotus"
-	// messagemodel "github.com/buidl-labs/filecoin-chain-indexer/model/messages"
+	messagemodel "github.com/buidl-labs/filecoin-chain-indexer/model/messages"
 	// "github.com/buidl-labs/filecoin-chain-indexer/model"
 	// "github.com/buidl-labs/filecoin-chain-indexer/storage"
 )
@@ -139,8 +140,7 @@ func Transform(cfg config.Config, csofilename string) error {
 	// var execTraceSubcallsResults messagemodel.Transactions
 
 	var transactionsArr = [][]string{
-		// {"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "size_bytes", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "parent_base_fee", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "gas_refund", "gas_burned", "actor_name"},
-		{"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "size_bytes", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "parent_base_fee", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "gas_refund", "gas_burned", "actor_name", "miner"},
+		{"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "size_bytes", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "parent_base_fee", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "gas_refund", "gas_burned", "actor_name", "miner", "return_bytes"},
 	}
 	var parsedMessagesArr = [][]string{
 		{"cid", "height", "sender", "receiver", "value", "method", "params", "miner"},
@@ -184,10 +184,18 @@ func Transform(cfg config.Config, csofilename string) error {
 			actor = statediff.LotusTypeUnknown
 		}
 		miner := "0"
-		if actor == "storageMinerActorV3" || actor == "storageMinerActorV2" || actor == "storageMinerActor" {
-			miner = irToID.String()
-		}
-		// {"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "gas_refund", "gas_burned", "actor_name"},
+		// log.Info("ir.MsgRct.Return:", ir.MsgRct.Return, " string ir.MsgRct.Return:", string(ir.MsgRct.Return[:]), " fmtsp:", fmt.Sprintf("%s", ir.MsgRct.Return))
+		miner = util.DeriveMiner(&messagemodel.Transaction{
+			Cid:         ir.MsgCid.String(),
+			Height:      heightint64,
+			Sender:      irFromID.String(),
+			Receiver:    irToID.String(),
+			Amount:      ir.Msg.Value.String(),
+			Method:      uint64(ir.Msg.Method),
+			ActorName:   string(actor),
+			ReturnBytes: string(ir.MsgRct.Return),
+		}, miner)
+		// {"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "size_bytes", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "parent_base_fee", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "gas_refund", "gas_burned", "actor_name", "miner", "return_bytes"},
 		am := []string{ir.MsgCid.String(), fmt.Sprintf("%d", heightint64),
 			irFromID.String(), irToID.String(), ir.Msg.Value.String(), "0",
 			ir.Msg.GasFeeCap.String(), ir.Msg.GasPremium.String(),
@@ -199,7 +207,7 @@ func Transform(cfg config.Config, csofilename string) error {
 			ir.GasCost.BaseFeeBurn.String(), ir.GasCost.OverEstimationBurn.String(),
 			ir.GasCost.MinerPenalty.String(), ir.GasCost.MinerTip.String(),
 			ir.GasCost.Refund.String(), fmt.Sprintf("%d", 0), fmt.Sprintf("%d", 0),
-			string(actor), miner}
+			string(actor), miner, fmt.Sprintf("%v", ir.MsgRct.Return)}
 
 		transactionsArr = append(transactionsArr, am)
 
@@ -287,10 +295,18 @@ func Transform(cfg config.Config, csofilename string) error {
 				actor = statediff.LotusTypeUnknown
 			}
 			miner := "0"
-			if actor == "storageMinerActorV3" || actor == "storageMinerActorV2" || actor == "storageMinerActor" {
-				miner = scToID.String()
-			}
-			// {"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "gas_refund", "gas_burned", "actor_name"},
+			// log.Info("sc.MsgRct.Return:", sc.MsgRct.Return, " string sc.MsgRct.Return:", string(sc.MsgRct.Return[:]), " fmtsp:", fmt.Sprintf("%s", sc.MsgRct.Return))
+			miner = util.DeriveMiner(&messagemodel.Transaction{
+				Cid:         sc.Msg.Cid().String(),
+				Height:      heightint64,
+				Sender:      scFromID.String(),
+				Receiver:    scToID.String(),
+				Amount:      sc.Msg.Value.String(),
+				Method:      uint64(sc.Msg.Method),
+				ActorName:   string(actor),
+				ReturnBytes: string(sc.MsgRct.Return),
+			}, miner)
+			// {"cid", "height", "sender", "receiver", "amount", "type", "gas_fee_cap", "gas_premium", "gas_limit", "size_bytes", "nonce", "method", "method_name", "params", "params_bytes", "transferred", "state_root", "exit_code", "gas_used", "parent_base_fee", "base_fee_burn", "over_estimation_burn", "miner_penalty", "miner_tip", "refund", "gas_refund", "gas_burned", "actor_name", "miner", "return_bytes"},
 			amsc := []string{sc.Msg.Cid().String(), fmt.Sprintf("%d", heightint64),
 				scFromID.String(), scToID.String(), sc.Msg.Value.String(), "0",
 				sc.Msg.GasFeeCap.String(), sc.Msg.GasPremium.String(),
@@ -302,7 +318,7 @@ func Transform(cfg config.Config, csofilename string) error {
 				ir.GasCost.BaseFeeBurn.String(), ir.GasCost.OverEstimationBurn.String(),
 				ir.GasCost.MinerPenalty.String(), ir.GasCost.MinerTip.String(),
 				ir.GasCost.Refund.String(), fmt.Sprintf("%d", 0),
-				fmt.Sprintf("%d", 0), string(actor), miner}
+				fmt.Sprintf("%d", 0), string(actor), miner, fmt.Sprintf("%v", sc.MsgRct.Return)}
 			// "0", "0", "0", "0", "0", string(actor)}
 
 			// generateParamsStr(scToID, sc.Msg.Params, sc.Msg.Method, node)
@@ -473,8 +489,7 @@ func Transform(cfg config.Config, csofilename string) error {
 
 func computeTransferredAmount(actorName string, method abi.MethodNum, toID address.Address, params []byte, node lens.API) string {
 	if method == builtin3.MethodsMiner.WithdrawBalance &&
-		// actorName == "fil/3/storageminer" {
-		(actorName == "storageMinerActorV3" || actorName == "storageMinerActorV2" || actorName == "storageMinerActor") {
+		strings.HasPrefix(actorName, "storageMinerActor") {
 		decodedParams, err := node.StateDecodeParams(context.Background(), toID, method, params, types.EmptyTSK)
 		if err != nil {
 			return "0"
@@ -483,8 +498,7 @@ func computeTransferredAmount(actorName string, method abi.MethodNum, toID addre
 		amt := d["AmountRequested"].(string)
 		return amt
 	} else if method == builtin3.MethodsMarket.WithdrawBalance &&
-		// actorName == "fil/3/storagemarket" {
-		(actorName == "storageMarketActorV3" || actorName == "storageMarketActorV2" || actorName == "storageMarketActor") {
+		strings.HasPrefix(actorName, "storageMarketActor") {
 		decodedParams, err := node.StateDecodeParams(context.Background(), toID, method, params, types.EmptyTSK)
 		if err != nil {
 			return "0"
