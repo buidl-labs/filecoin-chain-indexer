@@ -65,7 +65,7 @@ func NewAPIOpener(cfg config.Config, cctx context.Context) (*APIOpener, lens.API
 }
 
 func (o *APIOpener) Open(ctx context.Context) (lens.API, lens.APICloser, error) {
-	api, closer, err := client.NewFullNodeRPC(ctx, o.addr, o.headers)
+	api, closer, err := client.NewFullNodeRPCV1(ctx, o.addr, o.headers)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("new full node rpc: %w", err)
 	}
