@@ -18,6 +18,22 @@ import (
 	"github.com/go-pg/pg/v10"
 )
 
+// func expectedBlockWinRate() {
+// 	qpercI := types.BigDiv(types.BigMul(pow.MinerPower.QualityAdjPower, types.NewInt(1000000)), pow.TotalPower.QualityAdjPower)
+// 	expWinChance := float64(types.BigMul(qpercI, types.NewInt(build.BlocksPerEpoch)).Int64()) / 1000000
+// 	if expWinChance > 0 {
+// 		if expWinChance > 1 {
+// 			expWinChance = 1
+// 		}
+// 		winRate := time.Duration(float64(time.Second*time.Duration(build.BlockDelaySecs)) / expWinChance)
+// 		winPerDay := float64(time.Hour*24) / float64(winRate)
+
+// 		fmt.Print("Expected block win rate: ")
+// 		color.Blue("%.4f/day (every %s)", winPerDay, winRate.Truncate(time.Second))
+// 	}
+
+// }
+
 func UpdateTransactionMiner(cfg config.Config) error {
 	from := cfg.From
 	to := cfg.To
