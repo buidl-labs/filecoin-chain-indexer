@@ -66,10 +66,6 @@ func (aw *APIWrapper) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) 
 	return aw.FullNode.ChainGetParentMessages(ctx, bcid)
 }
 
-func (aw *APIWrapper) StateGetReceipt(ctx context.Context, bcid cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error) {
-	return aw.FullNode.StateGetReceipt(ctx, bcid, tsk)
-}
-
 func (aw *APIWrapper) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error) {
 	return aw.FullNode.ChainGetParentReceipts(ctx, bcid)
 }
@@ -144,8 +140,8 @@ func (aw *APIWrapper) StateReadState(ctx context.Context, actor address.Address,
 	return aw.FullNode.StateReadState(ctx, actor, tsk)
 }
 
-func (aw *APIWrapper) StateSearchMsg(ctx context.Context, bcid cid.Cid) (*api.MsgLookup, error) {
-	return aw.FullNode.StateSearchMsg(ctx, bcid)
+func (aw *APIWrapper) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
+	return aw.FullNode.StateSearchMsg(ctx, from, msg, limit, allowReplaced)
 }
 
 func (aw *APIWrapper) StateDecodeParams(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error) {
