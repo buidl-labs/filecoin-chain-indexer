@@ -29,3 +29,4 @@ s3data/csvs/parsed_messages/*
 !s3data/csvs/parsed_messages/idx
 s3data/csvs/transactions/*
 !s3data/csvs/transactions/idx
+cmd
