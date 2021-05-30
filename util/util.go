@@ -22,6 +22,12 @@ func GetenvInt(key string) (int, error) {
 	return v, nil
 }
 
+func IsMiner(address string) bool {
+	// TODO: check is db/store/using API if sent address
+	// is a miner in the filecoin network.
+	return true
+}
+
 func DeriveMiner(transaction *messagemodel.Transaction, miner string) string {
 	method := transaction.Method
 	actorName := transaction.ActorName
@@ -30,6 +36,11 @@ func DeriveMiner(transaction *messagemodel.Transaction, miner string) string {
 		case 0:
 			// Send
 			// sender: account, receiver: account
+			// can be miner too (eg: in case of ReportConsensusFault,
+			// we have miner -> f099 and miner -> caller)
+			if IsMiner(transaction.Sender) {
+				miner = transaction.Sender
+			}
 		case 1:
 			// Constructor
 			// sender: system actor (f00), receiver: account
