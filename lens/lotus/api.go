@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	miner "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -150,6 +151,14 @@ func (aw *APIWrapper) StateDecodeParams(ctx context.Context, toAddr address.Addr
 
 func (aw *APIWrapper) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
 	return aw.FullNode.StateVMCirculatingSupplyInternal(ctx, tsk)
+}
+
+func (aw *APIWrapper) WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error) {
+	return aw.FullNode.WalletBalance(ctx, addr)
+}
+
+func (aw *APIWrapper) WalletVerify(ctx context.Context, addr address.Address, data []byte, sign *crypto.Signature) (bool, error) {
+	return aw.FullNode.WalletVerify(ctx, addr, data, sign)
 }
 
 func (aw *APIWrapper) IndexActorCodes(ctx context.Context, ts *types.TipSet) error {

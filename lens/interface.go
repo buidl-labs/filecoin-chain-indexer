@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -24,6 +25,9 @@ type API interface {
 	ClientAPI
 	ChainAPI
 	StateAPI
+
+	WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error)
+	WalletVerify(ctx context.Context, addr address.Address, data []byte, sign *crypto.Signature) (bool, error)
 
 	GetExecutedMessagesForTipset(ctx context.Context, ts, pts *types.TipSet) ([]*ExecutedMessage, error)
 	IndexActorCodes(ctx context.Context, ts *types.TipSet) error
